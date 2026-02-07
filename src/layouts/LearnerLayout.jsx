@@ -45,6 +45,11 @@ const LearnerLayout = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    setShowUserMenu(false);
+    setShowMobileMenu(false);
+  }, [location]);
+
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -226,18 +231,39 @@ const LearnerLayout = () => {
                           <p className="text-sm text-gray-500">{user.email}</p>
                         </div>
                         <div className="py-2">
-                          <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50/80 transition-colors">
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setShowUserMenu(false); 
+                              navigate('/profile'); 
+                            }} 
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50/80 transition-colors text-left"
+                          >
                             <User className="w-4 h-4" />
                             <span>View Profile</span>
-                          </Link>
-                          <Link to="/courses" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50/80 transition-colors">
+                          </button>
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setShowUserMenu(false); 
+                              navigate('/courses'); 
+                            }} 
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50/80 transition-colors text-left"
+                          >
                             <GraduationCap className="w-4 h-4" />
                             <span>My Courses</span>
-                          </Link>
-                          <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50/80 transition-colors">
+                          </button>
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setShowUserMenu(false); 
+                              navigate('/profile'); 
+                            }} 
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50/80 transition-colors text-left"
+                          >
                             <Settings className="w-4 h-4" />
                             <span>Settings</span>
-                          </Link>
+                          </button>
                         </div>
                         <div className="border-t border-gray-100 pt-2">
                           <button 
@@ -286,18 +312,22 @@ const LearnerLayout = () => {
         {showMobileMenu && (
           <div className="md:hidden absolute top-full left-0 right-0 glass-card border-t border-gray-200/50 animate-slide-in-down">
             <div className="px-4 py-6 space-y-3">
-              <Link to="/courses" className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-100/80 transition-colors">
+              <Link to="/courses" onClick={() => setShowMobileMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-100/80 transition-colors">
                 <Home className="w-5 h-5" />
                 <span>Explore Courses</span>
               </Link>
               {user && (
                 <>
-                  <Link to="/profile" className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-100/80 transition-colors">
+                  <Link to="/courses" onClick={() => setShowMobileMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-100/80 transition-colors">
                     <GraduationCap className="w-5 h-5" />
-                    <span>My Learning</span>
+                    <span>My Courses</span>
+                  </Link>
+                  <Link to="/profile" onClick={() => setShowMobileMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-100/80 transition-colors">
+                    <User className="w-5 h-5" />
+                    <span>My Profile</span>
                   </Link>
                   {(user.role === 'admin' || user.role === 'instructor') && (
-                    <Link to="/admin/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-100/80 transition-colors">
+                    <Link to="/admin/dashboard" onClick={() => setShowMobileMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-100/80 transition-colors">
                       <LayoutDashboard className="w-5 h-5" />
                       <span>Dashboard</span>
                     </Link>
