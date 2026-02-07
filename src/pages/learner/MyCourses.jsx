@@ -1140,3 +1140,8 @@ const MyCourses = () => {
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+export default MyCourses;

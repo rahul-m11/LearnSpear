@@ -43,6 +43,14 @@ import {
   Search,
   Gem,
   GraduationCap,
+  Share2,
+  Download,
+  Copy,
+  Facebook,
+  Send,
+  Check,
+  Lock,
+  X,
 } from 'lucide-react';
 
 // Badge icon mapping
@@ -65,6 +73,9 @@ const Profile = () => {
   const { user, courses, enrollments, getUserBadge, quizzes } = useApp();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedCertificate, setSelectedCertificate] = useState(null);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Activity data for heatmap (last 365 days)
   const generateActivityData = () => {
@@ -258,6 +269,46 @@ const Profile = () => {
   ];
 
   const unlockedAchievements = achievements.filter((a) => a.unlocked).length;
+
+  // Generate certificates for completed courses
+  const certificates = enrolledCourses
+    .filter(course => course?.enrollment?.status === 'completed')
+    .map((course, index) => ({
+      id: `cert-${course.id}`,
+      courseTitle: course.title,
+      courseDuration: course.lessons?.reduce((sum, l) => sum + (l.duration || 0), 0) || 0,
+      completedDate: course.enrollment.completedAt || new Date().toISOString(),
+      instructorName: course.instructor,
+      certificateNumber: `LS-${String(user.id).padStart(4, '0')}-${String(course.id).padStart(4, '0')}-2026`,
+      grade: course.enrollment.grade || 'A',
+      skills: course.tags || [],
+    }));
+
+  // Share certificate function
+  const shareCertificate = (certificate, platform) => {
+    const certificateUrl = `${window.location.origin}/certificate/${certificate.id}`;
+    const shareText = `I just completed "${certificate.courseTitle}" on LearnSphere! 🎓✨`;
+    
+    const shareUrls = {
+      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(certificateUrl)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(certificateUrl)}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(certificateUrl)}`,
+    };
+
+    if (platform === 'copy') {
+      navigator.clipboard.writeText(certificateUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } else if (shareUrls[platform]) {
+      window.open(shareUrls[platform], '_blank', 'width=600,height=400');
+    }
+  };
+
+  // Download certificate function
+  const downloadCertificate = (certificate) => {
+    // In a real app, this would generate a PDF
+    alert(`Downloading certificate for "${certificate.courseTitle}"...\nThis would generate a PDF in production.`);
+  };
 
   // Get activity level color
   const getActivityColor = (count) => {
@@ -495,6 +546,7 @@ const Profile = () => {
               { id: 'overview', label: 'Overview', icon: BarChart3 },
               { id: 'courses', label: 'My Courses', icon: BookOpen },
               { id: 'achievements', label: 'Achievements', icon: Trophy },
+              { id: 'certificates', label: 'Certificates', icon: Award },
               { id: 'activity', label: 'Activity', icon: Activity },
             ]).map((tab) => (
               <button
@@ -1018,6 +1070,45 @@ const Profile = () => {
                     </div>
                   </div>
 
+                  {/* Current Badge Status */}
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200 p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <Crown className="w-5 h-5 text-purple-600" />
+                        Current Badge
+                      </h3>
+                      <button
+                        onClick={() => setActiveTab('achievements')}
+                        className="text-purple-600 text-sm hover:underline font-medium"
+                      >
+                        View All
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className={`w-20 h-20 rounded-xl ${currentBadge.color} shadow-lg flex items-center justify-center`}>
+                        <BadgeIcon iconName={currentBadge.icon} className="w-10 h-10" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-bold text-xl text-gray-900 mb-1">{currentBadge.name}</div>
+                        <p className="text-sm text-gray-600 mb-2">{currentBadge.description}</p>
+                        {nextBadge && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-gray-600">Next: {nextBadge.name}</span>
+                              <span className="font-semibold text-purple-600">{user.points}/{nextBadge.points} XP</span>
+                            </div>
+                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all"
+                                style={{ width: `${Math.min(progressToNext, 100)}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Recent Achievements */}
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -1053,6 +1144,59 @@ const Profile = () => {
                         </p>
                       )}
                     </div>
+                  </div>
+
+                  {/* Recent Certificates */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <Award className="w-5 h-5 text-cyan-600" />
+                        Certificates
+                      </h3>
+                      <button
+                        onClick={() => setActiveTab('certificates')}
+                        className="text-cyan-600 text-sm hover:underline font-medium"
+                      >
+                        View All
+                      </button>
+                    </div>
+                    {certificates.length > 0 ? (
+                      <div className="space-y-3">
+                        {certificates.slice(0, 2).map((cert) => (
+                          <div
+                            key={cert.id}
+                            className="p-4 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-200 hover:shadow-md transition-all cursor-pointer"
+                            onClick={() => setSelectedCertificate(cert)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <Award className="w-6 h-6 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-gray-900 truncate">{cert.courseTitle}</div>
+                                <div className="text-xs text-gray-500">
+                                  Completed {new Date(cert.completedDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                                </div>
+                              </div>
+                              <ChevronRight className="w-5 h-5 text-gray-400" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <div className="w-16 h-16 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center">
+                          <Award className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <p className="text-gray-500 text-sm mb-3">No certificates yet</p>
+                        <Link
+                          to="/courses"
+                          className="text-cyan-600 text-sm font-medium hover:underline"
+                        >
+                          Start Learning →
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -1191,39 +1335,368 @@ const Profile = () => {
         )}
 
         {activeTab === 'achievements' && isLearner && (
-          <div className="animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {achievements.map((achievement) => (
-                <div
-                  key={achievement.id}
-                  className={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center transition-all ${
-                    achievement.unlocked
-                      ? 'hover:shadow-md'
-                      : 'opacity-50 grayscale'
-                  }`}
-                >
+          <div className="animate-fade-in space-y-6">
+            {/* Badges Showcase */}
+            <div className="bg-gradient-to-br from-white via-purple-50/30 to-pink-50/30 rounded-2xl shadow-sm border border-purple-100 p-8">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                      <Crown className="w-6 h-6 text-white" />
+                    </div>
+                    Your Badge Collection
+                  </h3>
+                  <p className="text-gray-500 mt-1">Unlock badges by earning XP points</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+                    {user.points} XP
+                  </div>
+                  <p className="text-sm text-gray-500">Current Points</p>
+                </div>
+              </div>
+              
+              {/* Current Badge with Progress */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 mb-6 border-2 border-purple-200">
+                <div className="flex items-center gap-6">
+                  <div className={`w-24 h-24 rounded-2xl ${currentBadge.color} bg-gradient-to-br p-1 shadow-lg`}>
+                    <div className="w-full h-full bg-white rounded-xl flex items-center justify-center">
+                      <BadgeIcon iconName={currentBadge.icon} className="w-12 h-12" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="text-2xl font-bold text-gray-900">{currentBadge.name}</h4>
+                      <span className="px-3 py-1 bg-purple-100 text-purple-700 text-sm font-semibold rounded-full">
+                        Level {BADGE_LEVELS.indexOf(currentBadge) + 1}
+                      </span>
+                    </div>
+                    <p className="text-gray-600 mb-4">{currentBadge.description}</p>
+                    {nextBadge && (
+                      <div>
+                        <div className="flex items-center justify-between text-sm mb-2">
+                          <span className="text-gray-600">Progress to {nextBadge.name}</span>
+                          <span className="font-semibold text-purple-600">
+                            {user.points}/{nextBadge.points} XP
+                          </span>
+                        </div>
+                        <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min(progressToNext, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* All Badges Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {BADGE_LEVELS.map((badge, index) => {
+                  const isUnlocked = user.points >= badge.points;
+                  return (
+                    <div
+                      key={badge.name}
+                      className={`relative bg-white rounded-xl p-4 text-center transition-all border-2 ${
+                        isUnlocked
+                          ? 'border-purple-200 hover:shadow-lg hover:-translate-y-1 cursor-pointer'
+                          : 'border-gray-200 opacity-50'
+                      }`}
+                    >
+                      {!isUnlocked && (
+                        <div className="absolute inset-0 bg-gray-50/50 backdrop-blur-[1px] rounded-xl flex items-center justify-center">
+                          <Lock className="w-6 h-6 text-gray-400" />
+                        </div>
+                      )}
+                      <div className={`w-16 h-16 mx-auto mb-3 rounded-xl ${badge.color} ${isUnlocked ? 'shadow-md' : 'grayscale'} flex items-center justify-center`}>
+                        <BadgeIcon iconName={badge.icon} className="w-8 h-8" />
+                      </div>
+                      <h5 className="font-semibold text-gray-900 text-sm mb-1">{badge.name}</h5>
+                      <p className="text-xs text-gray-500">{badge.points} XP</p>
+                      {isUnlocked && (
+                        <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                          <CheckCircle className="w-3 h-3" />
+                          Unlocked
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Achievements Grid */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Trophy className="w-6 h-6 text-yellow-500" />
+                Achievements
+                <span className="ml-auto text-sm font-normal text-gray-500">
+                  {unlockedAchievements}/{achievements.length} Unlocked
+                </span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {achievements.map((achievement) => (
                   <div
-                    className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
-                      achievement.unlocked ? achievement.bg : 'bg-gray-100'
+                    key={achievement.id}
+                    className={`bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-6 text-center transition-all ${
+                      achievement.unlocked
+                        ? 'hover:shadow-md'
+                        : 'opacity-50 grayscale'
                     }`}
                   >
-                    <achievement.icon
-                      className={`w-8 h-8 ${
-                        achievement.unlocked ? achievement.color : 'text-gray-400'
+                    <div
+                      className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
+                        achievement.unlocked ? achievement.bg : 'bg-gray-100'
                       }`}
-                    />
-                  </div>
-                  <h4 className="font-semibold text-gray-900 mb-1">{achievement.name}</h4>
-                  <p className="text-sm text-gray-500">{achievement.description}</p>
-                  {achievement.unlocked && (
-                    <div className="mt-3 inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                      <CheckCircle className="w-3 h-3" />
-                      Unlocked
+                    >
+                      <achievement.icon
+                        className={`w-8 h-8 ${
+                          achievement.unlocked ? achievement.color : 'text-gray-400'
+                        }`}
+                      />
                     </div>
-                  )}
-                </div>
-              ))}
+                    <h4 className="font-semibold text-gray-900 mb-1">{achievement.name}</h4>
+                    <p className="text-sm text-gray-500">{achievement.description}</p>
+                    {achievement.unlocked && (
+                      <div className="mt-3 inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                        <CheckCircle className="w-3 h-3" />
+                        Unlocked
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'certificates' && isLearner && (
+          <div className="animate-fade-in space-y-6">
+            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl p-6 border border-cyan-200">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+                  <Award className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Your Certificates</h2>
+                  <p className="text-gray-600">View, download, and share your achievements</p>
+                </div>
+                <div className="ml-auto text-right">
+                  <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-blue-600">
+                    {certificates.length}
+                  </div>
+                  <p className="text-sm text-gray-500">Certificates Earned</p>
+                </div>
+              </div>
+            </div>
+
+            {certificates.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {certificates.map((certificate) => (
+                  <div
+                    key={certificate.id}
+                    className="group bg-white rounded-2xl shadow-sm border-2 border-gray-200 hover:border-cyan-300 hover:shadow-xl transition-all duration-300 overflow-hidden"
+                  >
+                    {/* Certificate Preview */}
+                    <div className="relative bg-gradient-to-br from-cyan-500 via-blue-500 to-indigo-600 p-8 text-white">
+                      <div className="absolute inset-0 opacity-10" style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+                      }}></div>
+                      
+                      <div className="relative z-10">
+                        <div className="flex items-start justify-between mb-6">
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Award className="w-6 h-6" />
+                              <span className="text-sm font-semibold">CERTIFICATE OF COMPLETION</span>
+                            </div>
+                            <h3 className="text-2xl font-bold">{certificate.courseTitle}</h3>
+                          </div>
+                          <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-4 border-white/40">
+                            <span className="text-2xl font-bold">{certificate.grade}</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 text-white/90 text-sm">
+                          <p><strong>Student:</strong> {user.name}</p>
+                          <p><strong>Completed:</strong> {new Date(certificate.completedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                          <p><strong>Duration:</strong> {Math.floor(certificate.courseDuration / 60)} hours</p>
+                          <p><strong>Certificate #:</strong> {certificate.certificateNumber}</p>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {certificate.skills.slice(0, 3).map((skill, idx) => (
+                            <span key={idx} className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-medium border border-white/30">
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="p-6 bg-gray-50">
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          onClick={() => setSelectedCertificate(certificate)}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-cyan-600 text-white rounded-xl font-medium hover:bg-cyan-700 transition-colors"
+                        >
+                          <Award className="w-4 h-4" />
+                          View Certificate
+                        </button>
+                        <button
+                          onClick={() => downloadCertificate(certificate)}
+                          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                          title="Download"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                        <div className="relative">
+                          <button
+                            onClick={() => setShowShareMenu(showShareMenu === certificate.id ? null : certificate.id)}
+                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                            title="Share"
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </button>
+                          
+                          {showShareMenu === certificate.id && (
+                            <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 p-2 z-20 animate-scale-in">
+                              <div className="text-xs font-semibold text-gray-500 px-3 py-2">Share this certificate</div>
+                              <button
+                                onClick={() => shareCertificate(certificate, 'linkedin')}
+                                className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-lg transition-colors text-left"
+                              >
+                                <Linkedin className="w-4 h-4 text-blue-600" />
+                                <span className="text-sm">Share on LinkedIn</span>
+                              </button>
+                              <button
+                                onClick={() => shareCertificate(certificate, 'twitter')}
+                                className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-lg transition-colors text-left"
+                              >
+                                <Twitter className="w-4 h-4 text-sky-500" />
+                                <span className="text-sm">Share on Twitter</span>
+                              </button>
+                              <button
+                                onClick={() => shareCertificate(certificate, 'facebook')}
+                                className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-lg transition-colors text-left"
+                              >
+                                <Facebook className="w-4 h-4 text-blue-600" />
+                                <span className="text-sm">Share on Facebook</span>
+                              </button>
+                              <div className="border-t border-gray-200 my-2"></div>
+                              <button
+                                onClick={() => shareCertificate(certificate, 'copy')}
+                                className="w-full flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                              >
+                                {copiedLink ? (
+                                  <>
+                                    <Check className="w-4 h-4 text-green-600" />
+                                    <span className="text-sm text-green-600">Link Copied!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-4 h-4" />
+                                    <span className="text-sm">Copy Link</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
+                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center">
+                  <Award className="w-12 h-12 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No Certificates Yet</h3>
+                <p className="text-gray-500 mb-6">Complete courses to earn certificates and showcase your achievements!</p>
+                <Link
+                  to="/courses"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                >
+                  <BookOpen className="w-5 h-5" />
+                  Browse Courses
+                </Link>
+              </div>
+            )}
+
+            {/* Certificate Modal */}
+            {selectedCertificate && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedCertificate(null)}>
+                <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
+                  {/* Certificate Full View */}
+                  <div className="relative bg-gradient-to-br from-cyan-500 via-blue-500 to-indigo-600 p-12 text-white rounded-t-3xl">
+                    <button
+                      onClick={() => setSelectedCertificate(null)}
+                      className="absolute top-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+
+                    <div className="text-center mb-8">
+                      <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mb-6 border-4 border-white/40">
+                        <Award className="w-10 h-10" />
+                      </div>
+                      <h2 className="text-4xl font-bold mb-2">Certificate of Completion</h2>
+                      <p className="text-white/80">This is to certify that</p>
+                    </div>
+
+                    <div className="text-center mb-8">
+                      <h3 className="text-5xl font-bold mb-6 border-b-4 border-white/40 inline-block pb-2">{user.name}</h3>
+                      <p className="text-xl text-white/90 mb-4">has successfully completed the course</p>
+                      <h4 className="text-3xl font-bold mb-6">{selectedCertificate.courseTitle}</h4>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-8 text-center mb-8">
+                      <div>
+                        <p className="text-white/70 text-sm mb-1">Completed On</p>
+                        <p className="font-semibold">{new Date(selectedCertificate.completedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      </div>
+                      <div>
+                        <p className="text-white/70 text-sm mb-1">Duration</p>
+                        <p className="font-semibold">{Math.floor(selectedCertificate.courseDuration / 60)} Hours</p>
+                      </div>
+                      <div>
+                        <p className="text-white/70 text-sm mb-1">Grade</p>
+                        <p className="font-semibold text-2xl">{selectedCertificate.grade}</p>
+                      </div>
+                    </div>
+
+                    <div className="text-center border-t border-white/20 pt-6">
+                      <p className="text-white/70 text-sm mb-2">Certificate Number</p>
+                      <p className="font-mono font-semibold">{selectedCertificate.certificateNumber}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-gray-50 rounded-b-3xl flex justify-center gap-4">
+                    <button
+                      onClick={() => downloadCertificate(selectedCertificate)}
+                      className="flex items-center gap-2 px-6 py-3 bg-cyan-600 text-white rounded-xl font-medium hover:bg-cyan-700 transition-colors"
+                    >
+                      <Download className="w-5 h-5" />
+                      Download Certificate
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowShareMenu(selectedCertificate.id);
+                      }}
+                      className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      <Share2 className="w-5 h-5" />
+                      Share
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
