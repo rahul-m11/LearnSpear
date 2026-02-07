@@ -559,6 +559,8 @@ export const AppProvider = ({ children }) => {
   const [enrollments, setEnrollments] = useState(initialEnrollments);
   const [reviews, setReviews] = useState(initialReviews);
   const [quizAttempts, setQuizAttempts] = useState({});
+  const [likedCourses, setLikedCourses] = useState([]);
+  const [bookmarkedCourses, setBookmarkedCourses] = useState([]);
 
   // Load user from localStorage
   useEffect(() => {
@@ -853,6 +855,33 @@ export const AppProvider = ({ children }) => {
     return true;
   };
 
+  // Like/Bookmark functions
+  const toggleLikeCourse = (courseId) => {
+    if (likedCourses.includes(courseId)) {
+      setLikedCourses(likedCourses.filter((id) => id !== courseId));
+    } else {
+      setLikedCourses([...likedCourses, courseId]);
+    }
+  };
+
+  const toggleBookmarkCourse = (courseId) => {
+    if (bookmarkedCourses.includes(courseId)) {
+      setBookmarkedCourses(bookmarkedCourses.filter((id) => id !== courseId));
+    } else {
+      setBookmarkedCourses([...bookmarkedCourses, courseId]);
+    }
+  };
+
+  const removeCourse = (courseId) => {
+    setCourses(courses.filter((course) => course.id !== courseId));
+    setLikedCourses(likedCourses.filter((id) => id !== courseId));
+    setBookmarkedCourses(bookmarkedCourses.filter((id) => id !== courseId));
+  };
+
+  const getBookmarkedCourses = () => {
+    return courses.filter((course) => bookmarkedCourses.includes(course.id));
+  };
+
   const value = {
     user,
     users,
@@ -860,6 +889,8 @@ export const AppProvider = ({ children }) => {
     quizzes,
     enrollments,
     reviews,
+    likedCourses,
+    bookmarkedCourses,
     login,
     register,
     logout,
@@ -889,6 +920,10 @@ export const AppProvider = ({ children }) => {
     removeAttendee,
     getCourseAttendees,
     sendAttendeeMessage,
+    toggleLikeCourse,
+    toggleBookmarkCourse,
+    removeCourse,
+    getBookmarkedCourses,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
