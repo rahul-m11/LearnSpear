@@ -246,7 +246,7 @@ const LearnerLayout = () => {
                             onClick={(e) => { 
                               e.stopPropagation(); 
                               setShowUserMenu(false); 
-                              navigate('/courses'); 
+                              navigate('/courses?view=enrolled'); 
                             }} 
                             className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50/80 transition-colors text-left"
                           >
@@ -318,7 +318,7 @@ const LearnerLayout = () => {
               </Link>
               {user && (
                 <>
-                  <Link to="/courses" onClick={() => setShowMobileMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-100/80 transition-colors">
+                  <Link to="/courses?view=enrolled" onClick={() => setShowMobileMenu(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-100/80 transition-colors">
                     <GraduationCap className="w-5 h-5" />
                     <span>My Courses</span>
                   </Link>

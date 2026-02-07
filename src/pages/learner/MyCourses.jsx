@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp, BADGE_LEVELS } from '../../context/AppContext';
 import {
   Search,
@@ -59,6 +59,7 @@ const BadgeIcon = ({ iconName, className = "w-6 h-6" }) => {
 const MyCourses = () => {
   const { user, courses, enrollCourse, getEnrollment, getUserBadge } = useApp();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [viewMode, setViewMode] = useState('grid');
@@ -73,6 +74,7 @@ const MyCourses = () => {
   });
   const [isListening, setIsListening] = useState(false);
   const searchInputRef = useRef(null);
+  const enrolledCoursesRef = useRef(null);
 
   // Popular search tags
   const popularTags = ['React', 'Python', 'JavaScript', 'Machine Learning', 'Web Development', 'Data Science'];
@@ -180,6 +182,15 @@ const MyCourses = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Scroll to enrolled courses section when view=enrolled parameter is present
+  useEffect(() => {
+    if (searchParams.get('view') === 'enrolled' && enrolledCoursesRef.current) {
+      setTimeout(() => {
+        enrolledCoursesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [searchParams]);
 
   // Categories from courses
   const categories = ['all', ...new Set(courses.flatMap(c => c.tags || []))];
@@ -561,41 +572,7 @@ const MyCourses = () => {
               </div>
             </div>
 
-            {/* Course Status Tabs - Only show for logged-in users */}
-            {user && statusCounts.all > 0 && (
-              <div className="flex flex-wrap gap-2 mb-8 animate-fade-in-up pb-4 border-b border-gray-200">
-                {[
-                  { id: 'all', label: 'All Courses', count: statusCounts.all, icon: BookOpen },
-                  { id: 'ongoing', label: 'Ongoing', count: statusCounts.ongoing, icon: TrendingUp },
-                  { id: 'finished', label: 'Finished', count: statusCounts.finished, icon: CheckCircle },
-                  { id: 'timedout', label: 'Timed Out', count: statusCounts.timedout, icon: AlertCircle },
-                  { id: 'discontinued', label: 'Discontinued', count: statusCounts.discontinued, icon: XCircle }
-                ].map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = courseStatusFilter === tab.id;
-                  
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setCourseStatusFilter(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-300 ${
-                        isActive
-                          ? 'bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 shadow-lg shadow-cyan-400/40 scale-105'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900 border border-gray-300'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="text-sm">{tab.label}</span>
-                      <span className={`ml-1 text-xs font-bold ${
-                        isActive ? 'text-slate-900' : 'text-gray-600'
-                      }`}>
-                        ({tab.count})
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            {/* Course Status Tabs - Removed from here, moved to bottom for enrolled courses section */}
 
             {/* Courses Grid */}
             <div className={`grid gap-6 ${
@@ -942,8 +919,224 @@ const MyCourses = () => {
           )}
         </div>
       </div>
-    </div>
-  );
-};
 
-export default MyCourses;
+      {/* My Enrolled Courses Section - At Bottom */}
+      <div ref={enrolledCoursesRef} className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="mb-16">
+          <div className="inline-flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-sky-500 rounded-xl flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-slate-950 font-bold" />
+            </div>
+            <div>
+              <h2 className="text-4xl font-bold text-gray-900">My Learning Journey</h2>
+              <p className="text-gray-500 mt-1">Track your enrolled courses and progress</p>
+            </div>
+          </div>
+
+          {user && statusCounts.all > 0 ? (
+            <>
+              {/* Status Filter Tabs */}
+              <div className="flex flex-wrap gap-2 mb-10 animate-fade-in-up pb-6 border-b-2 border-gray-200">
+                {[
+                  { id: 'all', label: 'All Courses', count: statusCounts.all, icon: BookOpen },
+                  { id: 'ongoing', label: 'Ongoing', count: statusCounts.ongoing, icon: TrendingUp },
+                  { id: 'finished', label: 'Finished', count: statusCounts.finished, icon: CheckCircle },
+                  { id: 'timedout', label: 'Timed Out', count: statusCounts.timedout, icon: AlertCircle },
+                  { id: 'discontinued', label: 'Discontinued', count: statusCounts.discontinued, icon: XCircle }
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = courseStatusFilter === tab.id;
+                  
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setCourseStatusFilter(tab.id)}
+                      className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all duration-300 ${
+                        isActive
+                          ? 'bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 shadow-lg shadow-cyan-400/40 scale-105'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900 border-2 border-gray-300'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-sm font-semibold">{tab.label}</span>
+                      <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                        isActive ? 'bg-slate-950/20' : 'bg-gray-300/30'
+                      }`}>
+                        {tab.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Enrolled Courses Grid */}
+              <div className={`grid gap-6 ${
+                viewMode === 'grid' 
+                  ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
+                  : 'grid-cols-1'
+              }`}>
+                {availableCourses.map((course, index) => {
+                  const enrollment = user ? getEnrollment(user.id, course.id) : null;
+                  // Only show enrolled courses by filtering out non-enrolled ones
+                  if (!enrollment) return null;
+                  
+                  return (
+                    <div
+                      key={course.id}
+                      onMouseEnter={() => setHoveredCard(course.id)}
+                      onMouseLeave={() => setHoveredCard(null)}
+                      className={`group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 animate-fade-in-up ${
+                        viewMode === 'list' ? 'flex' : 'flex flex-col'
+                      }`}
+                      style={{ animationDelay: `${0.05 * (index + 1)}s` }}
+                    >
+                      {/* Card Glow Effect */}
+                      <div className={`absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-sky-500/20 to-slate-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl -z-10 scale-105`}></div>
+                      
+                      {/* Image Container */}
+                      <div className={`relative overflow-hidden ${viewMode === 'list' ? 'w-64 flex-shrink-0' : 'h-48'}`}>
+                        <img
+                          src={course.image}
+                          alt={course.title}
+                          className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        
+                        {/* Status Badge */}
+                        {enrollment && (
+                          <div className="absolute top-3 left-3">
+                            <span className={`px-3 py-1.5 rounded-full text-white text-xs font-bold backdrop-blur-sm ${
+                              enrollment.status === 'in-progress' ? 'bg-blue-500/80' :
+                              enrollment.status === 'completed' ? 'bg-green-500/80' :
+                              enrollment.status === 'timed-out' ? 'bg-orange-500/80' :
+                              'bg-gray-500/80'
+                            }`}>
+                              {enrollment.status === 'in-progress' ? '🔄 In Progress' :
+                               enrollment.status === 'completed' ? '✓ Completed' :
+                               enrollment.status === 'timed-out' ? '⏱ Timed Out' :
+                               '⊘ Discontinued'}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Progress Badge */}
+                        {enrollment && (
+                          <div className="absolute top-3 right-3">
+                            <div className="relative">
+                              <svg className="w-14 h-14 transform -rotate-90">
+                                <circle cx="28" cy="28" r="24" stroke="rgba(255,255,255,0.3)" strokeWidth="4" fill="none" />
+                                <circle 
+                                  cx="28" cy="28" r="24" 
+                                  stroke="url(#progressGradient)" 
+                                  strokeWidth="4" 
+                                  fill="none"
+                                  strokeDasharray={`${enrollment.progress * 1.5} 150`}
+                                  strokeLinecap="round"
+                                />
+                                <defs>
+                                  <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="#10B981" />
+                                    <stop offset="100%" stopColor="#34D399" />
+                                  </linearGradient>
+                                </defs>
+                              </svg>
+                              <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">
+                                {enrollment.progress}%
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className={`p-5 flex flex-col flex-grow ${viewMode === 'list' ? 'py-4' : ''}`}>
+                        {/* Tags */}
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {course.tags.slice(0, 2).map((tag, tagIndex) => (
+                            <span
+                              key={tagIndex}
+                              className="px-2.5 py-1 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 text-xs font-medium rounded-lg"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+
+                        <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
+                          {course.title}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-4 line-clamp-2 flex-grow">
+                          {course.description}
+                        </p>
+
+                        {/* Course Meta */}
+                        <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                          <div className="flex items-center gap-1">
+                            <BookOpen className="w-4 h-4" />
+                            <span>{course.lessons.length} lessons</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            <span>{Math.ceil(course.lessons.reduce((acc, l) => acc + (l.duration || 10), 0) / 60)}h</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                            <span>4.8</span>
+                          </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <div className="pt-4 border-t border-gray-100">
+                          <button
+                            onClick={() => handleCourseAction(course)}
+                            className={`w-full py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
+                              enrollment?.status === 'in-progress'
+                                ? 'bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 hover:shadow-lg hover:shadow-cyan-400/40'
+                                : enrollment?.status === 'completed'
+                                ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-slate-950 hover:shadow-lg hover:shadow-green-400/40'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                          >
+                            {enrollment?.status === 'in-progress' ? (
+                              <Play className="w-4 h-4" />
+                            ) : enrollment?.status === 'completed' ? (
+                              <CheckCircle className="w-4 h-4" />
+                            ) : (
+                              <ArrowRight className="w-4 h-4" />
+                            )}
+                            {getButtonText(course)}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {availableCourses.filter(c => getEnrollment(user.id, c.id)).length === 0 && (
+                <div className="text-center py-20 animate-fade-in">
+                  <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
+                    <BookOpen className="w-12 h-12 text-blue-500" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">No courses in this category</h3>
+                  <p className="text-gray-500 mb-6">Try selecting a different status tab</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-20 animate-fade-in">
+              <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
+                <BookOpen className="w-12 h-12 text-blue-500" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No courses enrolled yet</h3>
+              <p className="text-gray-500 mb-6">Start your learning journey by enrolling in a course above</p>
+              <button 
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="px-6 py-3 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 rounded-xl font-medium hover:shadow-lg transition-all"
+              >
+                Explore Courses
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
