@@ -120,6 +120,58 @@ code {
     -8px -8px 16px rgba(255, 255, 255, 0.8);
 }
 
+/* ==================== 3D TILT CARDS ==================== */
+.tilt-card {
+  --rx: 0deg;
+  --ry: 0deg;
+  --px: 50%;
+  --py: 50%;
+  --tz: 0px;
+  --s: 1;
+  transform-style: preserve-3d;
+  touch-action: pan-y;
+}
+
+.tilt-inner {
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)) translateZ(var(--tz)) scale(var(--s));
+  transform-style: preserve-3d;
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.tilt-card[data-tilt-dragging="1"] .tilt-inner {
+  transition: none;
+}
+
+.tilt-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms ease;
+  background:
+    radial-gradient(
+      circle at var(--px) var(--py),
+      rgba(255, 255, 255, 0.42) 0%,
+      rgba(255, 255, 255, 0.14) 22%,
+      rgba(255, 255, 255, 0.00) 55%
+    );
+}
+
+.tilt-card:hover .tilt-shine,
+.tilt-card[data-tilt-dragging="1"] .tilt-shine {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-inner,
+  .tilt-shine {
+    transition: none !important;
+  }
+  .tilt-inner {
+    transform: none !important;
+  }
+}
+
 .neu-pressed {
   background: #e8eef3;
   box-shadow: 
