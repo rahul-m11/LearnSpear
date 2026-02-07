@@ -3,7 +3,6 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { LogoIcon } from '../components/LogoIcon';
 import { 
-  BookOpen, 
   LogOut, 
   LogIn, 
   UserPlus, 
@@ -340,7 +339,7 @@ const LearnerLayout = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="pt-24 relative z-10 animate-fade-in">
+      <main className="pt-24 relative animate-fade-in">
         <Outlet />
       </main>
 
@@ -358,7 +357,7 @@ const LearnerLayout = () => {
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-fuchsia-500 rounded-xl flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 text-white" />
+                  <LogoIcon className="h-8 w-8" />
                 </div>
                 <span className="text-2xl font-bold">LearnSphere</span>
               </div>
