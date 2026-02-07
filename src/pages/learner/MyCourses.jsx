@@ -38,6 +38,7 @@ import {
   Gem,
   AlertCircle,
   XCircle,
+  Trash2,
 } from 'lucide-react';
 
 // Badge icon mapping
@@ -57,7 +58,7 @@ const BadgeIcon = ({ iconName, className = "w-6 h-6" }) => {
 };
 
 const MyCourses = () => {
-  const { user, courses, enrollCourse, getEnrollment, getUserBadge } = useApp();
+  const { user, courses, enrollCourse, getEnrollment, getUserBadge, toggleLikeCourse, toggleBookmarkCourse, removeCourse, likedCourses, bookmarkedCourses, getBookmarkedCourses } = useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
@@ -649,12 +650,40 @@ const MyCourses = () => {
 
                       {/* Hover Actions */}
                       <div className="absolute bottom-3 left-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
-                        <button className="p-2 bg-white/90 backdrop-blur-sm rounded-xl hover:bg-white transition-colors">
-                          <Heart className="w-4 h-4 text-gray-600" />
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleLikeCourse(course.id);
+                          }}
+                          className="p-2 bg-white/90 backdrop-blur-sm rounded-xl hover:bg-white transition-colors"
+                          title="Like this course"
+                        >
+                          <Heart className={`w-4 h-4 ${likedCourses.includes(course.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
                         </button>
-                        <button className="p-2 bg-white/90 backdrop-blur-sm rounded-xl hover:bg-white transition-colors">
-                          <Bookmark className="w-4 h-4 text-gray-600" />
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleBookmarkCourse(course.id);
+                          }}
+                          className="p-2 bg-white/90 backdrop-blur-sm rounded-xl hover:bg-white transition-colors"
+                          title="Bookmark this course"
+                        >
+                          <Bookmark className={`w-4 h-4 ${bookmarkedCourses.includes(course.id) ? 'fill-amber-500 text-amber-500' : 'text-gray-600'}`} />
                         </button>
+                        {user?.role === 'admin' && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Are you sure you want to remove this course? This action cannot be undone.')) {
+                                removeCourse(course.id);
+                              }
+                            }}
+                            className="p-2 bg-white/90 backdrop-blur-sm rounded-xl hover:bg-white transition-colors"
+                            title="Remove this course (Admin only)"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -919,6 +948,112 @@ const MyCourses = () => {
           )}
         </div>
       </div>
+
+      {/* Admin Bookmarked Courses Section */}
+      {user?.role === 'admin' && bookmarkedCourses.length > 0 && (
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t-2 border-gray-100">
+          <div className="mb-16">
+            <div className="inline-flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-xl flex items-center justify-center">
+                <Bookmark className="w-6 h-6 text-slate-950 font-bold" />
+              </div>
+              <div>
+                <h2 className="text-4xl font-bold text-gray-900">Bookmarked Courses</h2>
+                <p className="text-gray-500 mt-1">Your saved courses for easy access</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {getBookmarkedCourses().map((course, index) => (
+                <div
+                  key={course.id}
+                  className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 animate-fade-in-up flex flex-col"
+                  style={{ animationDelay: `${0.05 * (index + 1)}s` }}
+                >
+                  {/* Card Glow Effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-yellow-500/20 to-slate-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl -z-10 scale-105"></div>
+                  
+                  {/* Image Container */}
+                  <div className="relative overflow-hidden h-48">
+                    <img
+                      src={course.image}
+                      alt={course.title}
+                      className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    
+                    <div className="absolute top-3 right-3">
+                      <span className="px-3 py-1.5 rounded-full text-white text-xs font-bold bg-amber-500/80 backdrop-blur-sm flex items-center gap-1">
+                        <Bookmark className="w-3 h-3 fill-white" /> Bookmarked
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-5 flex flex-col flex-grow">
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {course.tags.slice(0, 2).map((tag, tagIndex) => (
+                        <span
+                          key={tagIndex}
+                          className="px-2.5 py-1 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 text-xs font-medium rounded-lg"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
+                      {course.title}
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-4 line-clamp-2 flex-grow">
+                      {course.description}
+                    </p>
+
+                    {/* Course Meta */}
+                    <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                      <div className="flex items-center gap-1">
+                        <BookOpen className="w-4 h-4" />
+                        <span>{course.lessons.length} lessons</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{Math.ceil(course.lessons.reduce((acc, l) => acc + (l.duration || 10), 0) / 60)}h</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                        <span>4.8</span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="pt-4 border-t border-gray-100 flex gap-2">
+                      <button
+                        onClick={() => toggleBookmarkCourse(course.id)}
+                        className="flex-1 py-2 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 bg-amber-100 text-amber-700 hover:bg-amber-200"
+                      >
+                        <Bookmark className="w-4 h-4 fill-current" />
+                        Remove Bookmark
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to remove this course?')) {
+                            removeCourse(course.id);
+                          }
+                        }}
+                        className="flex-1 py-2 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 bg-red-100 text-red-700 hover:bg-red-200"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* My Enrolled Courses Section - At Bottom */}
       <div ref={enrolledCoursesRef} className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">

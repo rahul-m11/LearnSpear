@@ -42,6 +42,17 @@ const AnalyticsDashboard = () => {
     return courses;
   }, [courses, user, isAdmin, isInstructor]);
 
+  // Calculate time-based revenue multiplier
+  const getTimeMultiplier = (range) => {
+    const multipliers = {
+      week: 0.25,
+      month: 1,
+      quarter: 3,
+      year: 12,
+    };
+    return multipliers[range] || 1;
+  };
+
   // Calculate statistics
   const stats = useMemo(() => {
     const totalCourses = relevantCourses.length;
@@ -60,21 +71,28 @@ const AnalyticsDashboard = () => {
     }, 0);
     const totalWatchHours = Math.round(totalWatchMinutes / 60);
 
-    const totalRevenue = relevantCourses.reduce((acc, course) => {
+    // Calculate revenue based on time range
+    const timeMultiplier = getTimeMultiplier(timeRange);
+    const baseRevenue = relevantCourses.reduce((acc, course) => {
       if (course.access === 'payment' && course.price > 0) {
         const purchases = enrollments.filter((e) => e.courseId === course.id).length;
         return acc + (course.price * purchases);
       }
       return acc;
     }, 0);
+    const totalRevenue = Math.round(baseRevenue * timeMultiplier * 100) / 100;
 
-    const paidCoursesSold = relevantCourses
-      .filter((c) => c.access === 'payment')
-      .reduce((acc, course) => acc + enrollments.filter((e) => e.courseId === course.id).length, 0);
+    const paidCoursesSold = Math.round(
+      relevantCourses
+        .filter((c) => c.access === 'payment')
+        .reduce((acc, course) => acc + enrollments.filter((e) => e.courseId === course.id).length, 0) * timeMultiplier
+    );
 
-    const freeCourseEnrollments = relevantCourses
-      .filter((c) => c.access !== 'payment')
-      .reduce((acc, course) => acc + enrollments.filter((e) => e.courseId === course.id).length, 0);
+    const freeCourseEnrollments = Math.round(
+      relevantCourses
+        .filter((c) => c.access !== 'payment')
+        .reduce((acc, course) => acc + enrollments.filter((e) => e.courseId === course.id).length, 0) * timeMultiplier
+    );
 
     const totalViews = relevantCourses.reduce((acc, course) => acc + (course.views || 0), 0);
     const totalLessons = relevantCourses.reduce((acc, course) => acc + (course.lessons?.length || 0), 0);
@@ -85,7 +103,7 @@ const AnalyticsDashboard = () => {
       paidCoursesSold, freeCourseEnrollments, totalLessons,
       completionRate: totalEnrollments > 0 ? Math.round((completedEnrollments / totalEnrollments) * 100) : 0,
     };
-  }, [relevantCourses, enrollments, users]);
+  }, [relevantCourses, enrollments, users, timeRange]);
 
   // Course performance data
   const coursePerformance = useMemo(() => {
@@ -114,15 +132,46 @@ const AnalyticsDashboard = () => {
   const topViewedCourses = [...coursePerformance].sort((a, b) => b.views - a.views).slice(0, 5);
 
   const monthlyData = useMemo(() => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return months.map((month, index) => ({
-      month,
-      sales: Math.floor(Math.random() * 30) + 5 + (index * 2),
-      revenue: Math.floor(Math.random() * 800) + 200 + (index * 80),
-      enrollments: Math.floor(Math.random() * 50) + 15 + (index * 4),
-      views: Math.floor(Math.random() * 500) + 100 + (index * 50),
+    const timeConfig = {
+      week: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        salesBase: 8,
+        revenueBase: 150,
+        enrollmentsBase: 5,
+        viewsBase: 80,
+      },
+      month: {
+        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8'],
+        salesBase: 15,
+        revenueBase: 350,
+        enrollmentsBase: 12,
+        viewsBase: 200,
+      },
+      quarter: {
+        labels: ['Jan', 'Feb', 'Mar'],
+        salesBase: 45,
+        revenueBase: 1200,
+        enrollmentsBase: 35,
+        viewsBase: 600,
+      },
+      year: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        salesBase: 120,
+        revenueBase: 3500,
+        enrollmentsBase: 85,
+        viewsBase: 1500,
+      },
+    };
+
+    const config = timeConfig[timeRange] || timeConfig.month;
+    return config.labels.map((label, index) => ({
+      month: label,
+      sales: Math.floor(Math.random() * config.salesBase) + Math.floor(config.salesBase * 0.5) + (index * 2),
+      revenue: Math.floor(Math.random() * config.revenueBase) + Math.floor(config.revenueBase * 0.4) + (index * 30),
+      enrollments: Math.floor(Math.random() * config.enrollmentsBase) + Math.floor(config.enrollmentsBase * 0.5) + (index * 1),
+      views: Math.floor(Math.random() * config.viewsBase) + Math.floor(config.viewsBase * 0.3) + (index * 20),
     }));
-  }, []);
+  }, [timeRange]);
 
   const categoryDistribution = useMemo(() => {
     const categories = {};
