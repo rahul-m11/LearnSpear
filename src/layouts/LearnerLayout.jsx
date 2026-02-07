@@ -230,7 +230,7 @@ const LearnerLayout = () => {
                             <User className="w-4 h-4" />
                             <span>View Profile</span>
                           </Link>
-                          <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50/80 transition-colors">
+                          <Link to="/courses" className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50/80 transition-colors">
                             <GraduationCap className="w-4 h-4" />
                             <span>My Courses</span>
                           </Link>
