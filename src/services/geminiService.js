@@ -88,6 +88,91 @@ Do not include any markdown formatting or additional text. Only return the JSON 
 };
 
 /**
+ * Generate a personalized course completion certificate using Gemini AI
+ * @param {string} studentName - Name of the student
+ * @param {string} courseName - Name of the completed course
+ * @param {string} completionDate - Date of completion
+ * @returns {Promise<string>} SVG string of the certificate
+ */
+export const generateCertificate = async (studentName, courseName, completionDate) => {
+  if (!initializeGemini()) {
+    // Return a basic fallback SVG if API is not configured
+    return getFallbackCertificate(studentName, courseName, completionDate);
+  }
+
+  try {
+    const prompt = `
+You are an expert graphic designer and SVG coder. Create a beautiful, professional course completion certificate for a student.
+
+DETAILS:
+- Student Name: "${studentName}"
+- Course Name: "${courseName}"
+- Date: "${completionDate}"
+- Issuer: "LearnSpear Learning Platform"
+
+REQUIREMENTS:
+1. Output ONLY valid SVG code. No markdown, no explanations.
+2. The SVG should be responsive (viewBox="0 0 800 600").
+3. Use a professional color scheme (golds, blues, purples) suitable for an academic certificate.
+4. Include a decorative border.
+5. Include a "seal" or "badge" design element.
+6. Use standard fonts (Arial, Helvetica, serif).
+7. Center the text properly.
+8. Include a unique, encouraging AI-generated congratulatory message (1 sentence) at the bottom.
+
+Respond ONLY with the SVG string starting with <svg and ending with </svg>.
+`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text();
+    
+    // Clean up response if it contains markdown code blocks
+    text = text.replace(/```svg/g, '').replace(/```/g, '').trim();
+    
+    // Ensure it starts with <svg
+    const svgStart = text.indexOf('<svg');
+    const svgEnd = text.lastIndexOf('</svg>') + 6;
+    
+    if (svgStart >= 0 && svgEnd > svgStart) {
+      return text.substring(svgStart, svgEnd);
+    }
+    
+    return getFallbackCertificate(studentName, courseName, completionDate);
+    
+  } catch (error) {
+    console.error('Error generating certificate with Gemini:', error);
+    return getFallbackCertificate(studentName, courseName, completionDate);
+  }
+};
+
+/**
+ * Fallback certificate generator when AI is unavailable
+ */
+const getFallbackCertificate = (studentName, courseName, date) => {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+    <rect width="800" height="600" fill="#f8f9fa"/>
+    <rect x="20" y="20" width="760" height="560" fill="none" stroke="#1a56db" stroke-width="5"/>
+    <rect x="35" y="35" width="730" height="530" fill="none" stroke="#d1d5db" stroke-width="2"/>
+    
+    <text x="400" y="100" font-family="serif" font-size="40" text-anchor="middle" fill="#1a56db">Certificate of Completion</text>
+    
+    <text x="400" y="180" font-family="sans-serif" font-size="20" text-anchor="middle" fill="#4b5563">This is to certify that</text>
+    
+    <text x="400" y="260" font-family="serif" font-size="50" text-anchor="middle" fill="#111827" font-weight="bold">${studentName}</text>
+    
+    <text x="400" y="330" font-family="sans-serif" font-size="20" text-anchor="middle" fill="#4b5563">has successfully completed the course</text>
+    
+    <text x="400" y="390" font-family="sans-serif" font-size="30" text-anchor="middle" fill="#1a56db" font-weight="bold">${courseName}</text>
+    
+    <line x1="200" y1="450" x2="600" y2="450" stroke="#9ca3af" stroke-width="1"/>
+    
+    <text x="400" y="500" font-family="sans-serif" font-size="16" text-anchor="middle" fill="#6b7280">Completed on ${date}</text>
+    <text x="400" y="530" font-family="sans-serif" font-size="14" text-anchor="middle" fill="#9ca3af">LearnSpear AI Learning Platform</text>
+  </svg>`;
+};
+
+/**
  * Generate quiz questions for skip-unlock feature (shorter, focused on current section)
  * @param {string} transcript - The video transcript text
  * @returns {Promise<Array>} Array of 3 quiz questions

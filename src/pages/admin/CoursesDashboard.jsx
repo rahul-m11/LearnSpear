@@ -40,9 +40,9 @@ const CoursesDashboard = () => {
     course.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleCreateCourse = () => {
+  const handleCreateCourse = async () => {
     if (newCourseName.trim()) {
-      const newCourse = createCourse({
+      const newCourse = await createCourse({
         title: newCourseName,
         description: '',
         tags: [],
@@ -57,7 +57,9 @@ const CoursesDashboard = () => {
       });
       setNewCourseName('');
       setShowCreateModal(false);
-      navigate(`/admin/courses/${newCourse.id}`);
+      if (newCourse?.id) {
+        navigate(`/admin/courses/${newCourse.id}`);
+      }
     }
   };
 
@@ -68,9 +70,9 @@ const CoursesDashboard = () => {
     setActiveMenu(null);
   };
 
-  const handleDeleteCourse = (courseId) => {
+  const handleDeleteCourse = async (courseId) => {
     if (window.confirm('Are you sure you want to delete this course?')) {
-      deleteCourse(courseId);
+      await deleteCourse(courseId);
     }
     setActiveMenu(null);
   };

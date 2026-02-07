@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import {
@@ -31,6 +31,8 @@ const ROLE_OPTIONS = [
 const Register = () => {
   const { register, user } = useApp();
   const navigate = useNavigate();
+  const wasLoggedInOnMountRef = useRef(Boolean(user));
+  const submitInFlightRef = useRef(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -44,14 +46,17 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  // Redirect if already logged in
+  // Redirect only if the user was already logged in when this page mounted.
+  // This prevents a brief post-signup session from redirecting away before we
+  // can show the "Welcome <role>" message and send them to /login.
   React.useEffect(() => {
-    if (user) {
-      if (user.role === 'admin' || user.role === 'instructor') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/');
-      }
+    if (!wasLoggedInOnMountRef.current) return;
+    if (!user) return;
+
+    if (user.role === 'admin' || user.role === 'instructor') {
+      navigate('/admin/dashboard');
+    } else {
+      navigate('/');
     }
   }, [user, navigate]);
 
@@ -66,18 +71,25 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Hard guard against double submits before state updates land
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      submitInFlightRef.current = false;
       return;
     }
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
+      submitInFlightRef.current = false;
       return;
     }
 
     if (!agreedToTerms) {
       setError('Please agree to the terms and conditions');
+      submitInFlightRef.current = false;
       return;
     }
 
@@ -85,14 +97,36 @@ const Register = () => {
     const selectedRole = ROLE_OPTIONS.find(r => r.value === formData.role);
     if (selectedRole && !formData.email.toLowerCase().endsWith(selectedRole.domain)) {
       setError(`For ${selectedRole.label} role, email must end with ${selectedRole.domain}`);
+      submitInFlightRef.current = false;
       return;
     }
 
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const { confirmPassword, ...userData } = formData;
-    register(userData);
-    setIsLoading(false);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { confirmPassword, ...userData } = formData;
+      const result = await register(userData);
+      if (!result?.ok) {
+        setError(result?.message || 'Registration failed. Please try again.');
+        if (result?.code === 'already_registered') {
+          alert(result?.message || 'This email is already registered. Please log in instead.');
+          navigate('/login');
+        }
+        return;
+      }
+
+      const roleLabel =
+        userData.role === 'admin'
+          ? 'Admin'
+          : userData.role === 'instructor'
+          ? 'Instructor'
+          : 'Learner';
+      alert(`Welcome ${roleLabel}! ${result?.message || 'Your account was created. Please log in.'}`);
+      navigate('/login');
+    } finally {
+      setIsLoading(false);
+      submitInFlightRef.current = false;
+    }
   };
 
   // Password strength indicator

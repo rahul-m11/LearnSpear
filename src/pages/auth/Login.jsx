@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { Mail, Lock, AlertCircle, Sparkles, ArrowRight, Eye, EyeOff, Shield, Zap, Award } from 'lucide-react';
@@ -7,6 +7,7 @@ import { LogoIcon } from '../../components/LogoIcon';
 const Login = () => {
   const { login, user } = useApp();
   const navigate = useNavigate();
+  const loginInFlightRef = useRef(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -14,6 +15,30 @@ const Login = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const getRoleLabelFromEmail = (email) => {
+    const normalized = String(email || '').trim().toLowerCase();
+    if (normalized.endsWith('@admin.in')) return 'Admin';
+    if (normalized.endsWith('@ac.in')) return 'Instructor';
+    if (normalized.endsWith('@gmail.com')) return 'Learner';
+    return null;
+  };
+
+  const buildLoginDeniedMessage = (email) => {
+    const roleLabel = getRoleLabelFromEmail(email);
+    if (!roleLabel) {
+      return 'Login not allowed: account not found in database for this role/domain, or invalid credentials.';
+    }
+    return `Login not allowed for ${roleLabel}: account not found in database for this role/domain, or invalid credentials.`;
+  };
+
+  const withTimeout = (promise, timeoutMs) => {
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('timeout')), timeoutMs);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+  };
 
   // Redirect if already logged in
   React.useEffect(() => {
@@ -36,25 +61,67 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loginInFlightRef.current) return;
+    loginInFlightRef.current = true;
     setIsLoading(true);
     
     // Simulate loading
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    const success = login(formData.email, formData.password);
-    if (success) {
-      // Context will update user, useEffect will redirect
-    } else {
-      setError('Invalid email or password');
+    try {
+      const result = await withTimeout(
+        login(formData.email, formData.password),
+        12000
+      );
+      if (result?.ok) {
+        // Context will update user, useEffect will redirect
+      } else {
+        const roleLabel = getRoleLabelFromEmail(formData.email);
+        if (roleLabel && ['invalid_credentials', 'profile_missing', 'role_invalid', 'domain_mismatch'].includes(result?.code)) {
+          setError(`Login not allowed for ${roleLabel}: ${result?.message || buildLoginDeniedMessage(formData.email)}`);
+        } else {
+          setError(result?.message || buildLoginDeniedMessage(formData.email));
+        }
+      }
+    } catch (err) {
+      if (String(err?.message || '').toLowerCase() === 'timeout') {
+        setError('Login is taking too long. Please check your internet/Supabase connection and try again.');
+      } else {
+        setError('Login failed. Please try again.');
+      }
+    } finally {
       setIsLoading(false);
+      loginInFlightRef.current = false;
     }
   };
 
-  const quickLogin = (email, password) => {
+  const quickLogin = async (email, password) => {
+    if (loginInFlightRef.current) return;
+    loginInFlightRef.current = true;
     setFormData({ email, password });
-    setTimeout(() => {
-      login(email, password);
-    }, 300);
+    setError('');
+    setIsLoading(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const result = await withTimeout(login(email, password), 12000);
+      if (!result?.ok) {
+        const roleLabel = getRoleLabelFromEmail(email);
+        if (roleLabel && ['invalid_credentials', 'profile_missing', 'role_invalid', 'domain_mismatch'].includes(result?.code)) {
+          setError(`Login not allowed for ${roleLabel}: ${result?.message || buildLoginDeniedMessage(email)}`);
+        } else {
+          setError(result?.message || buildLoginDeniedMessage(email));
+        }
+      }
+    } catch (err) {
+      if (String(err?.message || '').toLowerCase() === 'timeout') {
+        setError('Login is taking too long. Please check your internet/Supabase connection and try again.');
+      } else {
+        setError('Login failed. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+      loginInFlightRef.current = false;
+    }
   };
 
   return (

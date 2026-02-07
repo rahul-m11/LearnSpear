@@ -1,4 +1,22 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import {
+  fetchCoursesWithLessons,
+  fetchProfiles,
+  fetchEnrollmentsForUser,
+  enrollInCourse,
+  completeLessonForUser,
+  createCourseDb,
+  updateCourseDb,
+  deleteCourseDb,
+  createLessonDb,
+  updateLessonDb,
+  deleteLessonDb,
+  logLoginEvent,
+  updateLastLoginAt,
+  ensureBadgesForPoints,
+  fetchUserBadges,
+} from '../services/dbService';
 
 const AppContext = createContext();
 
@@ -589,6 +607,13 @@ export const AppProvider = ({ children }) => {
   const [quizAttempts, setQuizAttempts] = useState({});
   const [likedCourses, setLikedCourses] = useState([]);
   const [bookmarkedCourses, setBookmarkedCourses] = useState([]);
+  const [earnedBadges, setEarnedBadges] = useState([]);
+
+  // During signup, Supabase may briefly create a session (when email confirmation is off).
+  // We suppress SIGNED_IN side-effects (profile fetch, badge sync, login logging) and force sign-out.
+  const suppressNextSignInRef = useRef(false);
+
+  const dbEnabled = isSupabaseConfigured() && supabase;
 
   const getLocalDateKey = (date = new Date()) => {
     // YYYY-MM-DD in user's local timezone
@@ -625,58 +650,386 @@ export const AppProvider = ({ children }) => {
     writeActivityCounts(userId, counts);
   };
 
-  // Load user from localStorage
+  // Auth listener (Supabase mode)
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      const parsed = JSON.parse(savedUser);
-      setUser(parsed);
-      // Mark today as active when the user is present (return visit / persisted session)
-      touchDailyActivity(parsed?.id);
+    if (!dbEnabled) {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        touchDailyActivity(parsed?.id);
+      }
+      return;
     }
-  }, []);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        if (event === 'SIGNED_IN' && suppressNextSignInRef.current) {
+          suppressNextSignInRef.current = false;
+          try {
+            await supabase.auth.signOut();
+          } catch {
+            // ignore
+          }
+          return;
+        }
+
+        if (event === 'SIGNED_IN') {
+          try {
+            await updateLastLoginAt(session.user.id);
+            await logLoginEvent({
+              userId: session.user.id,
+              event: 'login',
+              metadata: {
+                provider: session.user.app_metadata?.provider,
+                timestamp: new Date().toISOString(),
+              },
+            });
+          } catch (error) {
+            // Non-blocking: login should still work even if logging fails
+            console.warn('Login logging failed:', error?.message || error);
+          }
+        }
+        fetchProfile(session.user.id);
+      } else {
+        setUser(null);
+        setEnrollments([]);
+        setEarnedBadges([]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [dbEnabled]);
+
+  const fetchProfile = async (userId) => {
+    if (!dbEnabled) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (data) {
+        // Merge auth metadata (like email) with profile data
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const nextUser = {
+          ...data,
+          id: userId,
+          email: authUser?.email || data.email,
+          name: data.full_name || data.name,
+          avatar: data.avatar_url,
+        };
+        setUser(nextUser);
+        touchDailyActivity(userId);
+
+        // Load app data for this user
+        await Promise.all([
+          loadCourses(),
+          loadProfiles(),
+          loadEnrollments(userId),
+          syncBadges(nextUser),
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  const loadCourses = async () => {
+    if (!dbEnabled) return;
+    try {
+      const dbCourses = await fetchCoursesWithLessons();
+      setCourses(dbCourses);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+    }
+  };
+
+  const loadEnrollments = async (userId) => {
+    if (!dbEnabled || !userId) return;
+    try {
+      const dbEnrollments = await fetchEnrollmentsForUser(userId);
+      setEnrollments(dbEnrollments);
+    } catch (error) {
+      console.error('Error loading enrollments:', error);
+    }
+  };
+
+  const loadProfiles = async () => {
+    if (!dbEnabled) return;
+    try {
+      const profiles = await fetchProfiles();
+      setUsers(profiles);
+    } catch (error) {
+      console.error('Error loading profiles:', error);
+    }
+  };
+
+  const syncBadges = async (nextUser) => {
+    if (!dbEnabled || !nextUser?.id) return;
+    try {
+      await ensureBadgesForPoints(nextUser.id, nextUser.points || 0);
+      const rows = await fetchUserBadges(nextUser.id);
+      setEarnedBadges(rows);
+    } catch (error) {
+      console.error('Error syncing badges:', error);
+    }
+  };
 
   // Auth functions
-  const login = (email, password) => {
-    const foundUser = users.find(
-      (u) => u.email === email && u.password === password
-    );
-    if (foundUser) {
-      const { password, ...userWithoutPassword } = foundUser;
+  const login = async (email, password) => {
+    if (!dbEnabled) {
+      const foundUser = users.find(
+        (u) => u.email === email && u.password === password
+      );
+      if (foundUser) {
+        const { password, ...userWithoutPassword } = foundUser;
+        const nowIso = new Date().toISOString();
+        const nextUser = { ...userWithoutPassword, lastLoginAt: nowIso };
+        setUser(nextUser);
+        localStorage.setItem('user', JSON.stringify(nextUser));
+        touchDailyActivity(nextUser.id);
+        return { ok: true };
+      }
+      return { ok: false, code: 'invalid_credentials', message: 'Invalid email or password.' };
+    }
+
+    try {
+      const normalizedEmail = String(email || '').trim().toLowerCase();
+      const roleDomains = {
+        admin: '@admin.in',
+        instructor: '@ac.in',
+        learner: '@gmail.com',
+      };
+
+      // Pre-check: ensure the account is "listed in database" before attempting auth.
+      // This also avoids repeated invalid-credential auth calls when the user never registered.
+      const { data: profileByEmail, error: profileByEmailError } = await supabase
+        .from('profiles')
+        .select('id, role, email')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+
+      if (profileByEmailError) {
+        // Non-blocking but helpful error
+        console.warn('Login pre-check failed:', profileByEmailError?.message || profileByEmailError);
+      }
+
+      if (!profileByEmail) {
+        return {
+          ok: false,
+          code: 'not_registered',
+          message: 'No account found for this email. Please create an account first.',
+        };
+      }
+
+      const requiredDomainForRole = roleDomains[profileByEmail.role];
+      if (requiredDomainForRole && !normalizedEmail.endsWith(requiredDomainForRole)) {
+        return {
+          ok: false,
+          code: 'domain_mismatch',
+          message: 'Login not allowed: your email domain does not match the role stored in the database.',
+        };
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      const { data: authData, error: authUserError } = await supabase.auth.getUser();
+      if (authUserError) throw authUserError;
+
+      const authUser = authData?.user;
+      const userId = authUser?.id;
+      const authEmail = String(authUser?.email || email || '').toLowerCase();
+
+      if (!userId) {
+        await supabase.auth.signOut();
+        return { ok: false, code: 'no_user', message: 'Login failed. Please try again.' };
+      }
+
+      // Ensure this user exists in public.profiles ("listed in database")
+      const fetchProfileRow = async () => {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, role, email')
+          .eq('id', userId)
+          .single();
+        return { profile, profileError };
+      };
+
+      let { profile, profileError } = await fetchProfileRow();
+      if (profileError || !profile) {
+        // small retry (trigger/profile creation can lag slightly)
+        await new Promise((r) => setTimeout(r, 500));
+        ({ profile, profileError } = await fetchProfileRow());
+      }
+
+      if (profileError || !profile) {
+        await supabase.auth.signOut();
+        return {
+          ok: false,
+          code: 'profile_missing',
+          message: 'Login not allowed: your account is not listed in the database profile table yet.',
+        };
+      }
+
+      const role = profile.role;
+      const requiredDomain = roleDomains[role];
+      if (!requiredDomain) {
+        await supabase.auth.signOut();
+        return {
+          ok: false,
+          code: 'role_invalid',
+          message: 'Login not allowed: your role is not valid in the database.',
+        };
+      }
+
+      if (!authEmail.endsWith(requiredDomain)) {
+        await supabase.auth.signOut();
+        return {
+          ok: false,
+          code: 'domain_mismatch',
+          message: 'Login not allowed: your email domain does not match the role stored in the database.',
+        };
+      }
+
+      return { ok: true };
+    } catch (error) {
+      const rawMessage = String(error?.message || 'Login failed');
+      const normalized = rawMessage.toLowerCase();
+      console.error('Login error:', rawMessage);
+
+      if (normalized.includes('email not confirmed')) {
+        return {
+          ok: false,
+          code: 'email_not_confirmed',
+          message: 'Email not confirmed. Please open your inbox and confirm your email, then try logging in.',
+        };
+      }
+
+      if (normalized.includes('invalid login credentials')) {
+        return { ok: false, code: 'invalid_credentials', message: 'Invalid email or password.' };
+      }
+
+      return { ok: false, code: 'unknown', message: rawMessage };
+    }
+  };
+
+  const register = async (userData) => {
+    if (!dbEnabled) {
+      const newUser = {
+        ...userData,
+        id: users.length + 1,
+        avatar: getRandomAvatar(),
+        points: 0,
+      };
+      setUsers([...users, newUser]);
+      const { password, ...userWithoutPassword } = newUser;
       const nowIso = new Date().toISOString();
       const nextUser = { ...userWithoutPassword, lastLoginAt: nowIso };
       setUser(nextUser);
       localStorage.setItem('user', JSON.stringify(nextUser));
       touchDailyActivity(nextUser.id);
-      return true;
+      return { ok: true, message: 'Account created. Please log in.' };
     }
-    return false;
+
+    try {
+      suppressNextSignInRef.current = true;
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            full_name: userData.name,
+            role: userData.role,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      // Always redirect to login after signup (avoid auto session)
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // ignore
+      }
+
+      suppressNextSignInRef.current = false;
+
+      const needsEmailConfirmation = !data?.session;
+      return {
+        ok: true,
+        code: needsEmailConfirmation ? 'email_confirmation_required' : 'registered',
+        message: needsEmailConfirmation
+          ? 'Account created. Please confirm your email from your inbox before logging in.'
+          : 'Account created. Please log in.',
+      };
+    } catch (error) {
+      suppressNextSignInRef.current = false;
+      const rawMessage = String(error?.message || 'Registration failed');
+      const normalized = rawMessage.toLowerCase();
+      const status = error?.status;
+      const isExpected =
+        status === 429 ||
+        normalized.includes('rate limit') ||
+        normalized.includes('user already registered');
+      (isExpected ? console.warn : console.error)('Registration error:', rawMessage);
+
+      if (status === 429 || normalized.includes('rate limit')) {
+        return {
+          ok: false,
+          code: 'rate_limited',
+          message:
+            'Too many sign-up attempts. Supabase email rate limit exceeded — please wait a few minutes and try again (or use a different email).',
+        };
+      }
+
+      if (normalized.includes('user already registered')) {
+        return { ok: false, code: 'already_registered', message: 'This email is already registered. Please log in instead.' };
+      }
+
+      return { ok: false, code: 'unknown', message: rawMessage };
+    }
   };
 
-  const register = (userData) => {
-    const newUser = {
-      ...userData,
-      id: users.length + 1,
-      avatar: getRandomAvatar(),
-      points: 0,
-    };
-    setUsers([...users, newUser]);
-    const { password, ...userWithoutPassword } = newUser;
-    const nowIso = new Date().toISOString();
-    const nextUser = { ...userWithoutPassword, lastLoginAt: nowIso };
-    setUser(nextUser);
-    localStorage.setItem('user', JSON.stringify(nextUser));
-    touchDailyActivity(nextUser.id);
-    return true;
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    if (!dbEnabled) {
+      setUser(null);
+      localStorage.removeItem('user');
+      return;
+    }
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   // Course functions
-  const createCourse = (courseData) => {
+  const createCourse = async (courseData) => {
+    if (dbEnabled && user?.id) {
+      try {
+        const row = await createCourseDb({ courseData, authorId: user.id });
+        await loadCourses();
+        return { id: row.id };
+      } catch (error) {
+        console.error('Create course error:', error);
+        return null;
+      }
+    }
+
     const newCourse = {
       ...courseData,
       id: courses.length + 1,
@@ -688,7 +1041,18 @@ export const AppProvider = ({ children }) => {
     return newCourse;
   };
 
-  const updateCourse = (courseId, updates) => {
+  const updateCourse = async (courseId, updates) => {
+    if (dbEnabled) {
+      try {
+        await updateCourseDb({ courseId, updates });
+        await loadCourses();
+        return;
+      } catch (error) {
+        console.error('Update course error:', error);
+        return;
+      }
+    }
+
     setCourses(
       courses.map((course) =>
         course.id === courseId ? { ...course, ...updates } : course
@@ -696,7 +1060,17 @@ export const AppProvider = ({ children }) => {
     );
   };
 
-  const deleteCourse = (courseId) => {
+  const deleteCourse = async (courseId) => {
+    if (dbEnabled) {
+      try {
+        await deleteCourseDb(courseId);
+        await loadCourses();
+        return;
+      } catch (error) {
+        console.error('Delete course error:', error);
+        return;
+      }
+    }
     setCourses(courses.filter((course) => course.id !== courseId));
   };
 
@@ -705,7 +1079,20 @@ export const AppProvider = ({ children }) => {
   };
 
   // Lesson functions
-  const addLesson = (courseId, lessonData) => {
+  const addLesson = async (courseId, lessonData) => {
+    if (dbEnabled) {
+      try {
+        const course = getCourseById(courseId);
+        const orderIndex = (course?.lessons?.length || 0) + 1;
+        await createLessonDb({ courseId, lessonData, orderIndex });
+        await loadCourses();
+        return { ok: true };
+      } catch (error) {
+        console.error('Add lesson error:', error);
+        return { ok: false, message: error?.message || 'Failed to add lesson' };
+      }
+    }
+
     const course = courses.find((c) => c.id === courseId);
     if (!course) return;
 
@@ -717,9 +1104,22 @@ export const AppProvider = ({ children }) => {
     updateCourse(courseId, {
       lessons: [...course.lessons, newLesson],
     });
+
+    return { ok: true };
   };
 
-  const updateLesson = (courseId, lessonId, updates) => {
+  const updateLesson = async (courseId, lessonId, updates) => {
+    if (dbEnabled) {
+      try {
+        await updateLessonDb({ lessonId, updates });
+        await loadCourses();
+        return { ok: true };
+      } catch (error) {
+        console.error('Update lesson error:', error);
+        return { ok: false, message: error?.message || 'Failed to update lesson' };
+      }
+    }
+
     const course = courses.find((c) => c.id === courseId);
     if (!course) return;
 
@@ -728,15 +1128,30 @@ export const AppProvider = ({ children }) => {
         lesson.id === lessonId ? { ...lesson, ...updates } : lesson
       ),
     });
+
+    return { ok: true };
   };
 
-  const deleteLesson = (courseId, lessonId) => {
+  const deleteLesson = async (courseId, lessonId) => {
+    if (dbEnabled) {
+      try {
+        await deleteLessonDb(lessonId);
+        await loadCourses();
+        return { ok: true };
+      } catch (error) {
+        console.error('Delete lesson error:', error);
+        return { ok: false, message: error?.message || 'Failed to delete lesson' };
+      }
+    }
+
     const course = courses.find((c) => c.id === courseId);
     if (!course) return;
 
     updateCourse(courseId, {
       lessons: course.lessons.filter((lesson) => lesson.id !== lessonId),
     });
+
+    return { ok: true };
   };
 
   // Quiz functions
@@ -771,11 +1186,22 @@ export const AppProvider = ({ children }) => {
   };
 
   // Enrollment functions
-  const enrollCourse = (userId, courseId) => {
+  const enrollCourse = async (userId, courseId) => {
     const existing = enrollments.find(
       (e) => e.userId === userId && e.courseId === courseId
     );
     if (existing) return false;
+
+    if (dbEnabled) {
+      try {
+        await enrollInCourse(userId, courseId);
+        await loadEnrollments(userId);
+        return true;
+      } catch (error) {
+        console.error('Enroll error:', error);
+        return false;
+      }
+    }
 
     const newEnrollment = {
       userId,
@@ -809,6 +1235,10 @@ export const AppProvider = ({ children }) => {
   };
 
   const addPoints = (userId, points) => {
+    if (dbEnabled) {
+      // Points are awarded via RPC in completeLessonForUser; keep this for mock mode.
+      return;
+    }
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, points: (u.points || 0) + points } : u));
     // Also update session user if it's the current user
     setUser(prev => {
@@ -822,6 +1252,45 @@ export const AppProvider = ({ children }) => {
   };
 
   const completeLesson = (userId, courseId, lessonId) => {
+    if (dbEnabled) {
+      (async () => {
+        try {
+          const enrollment = getEnrollment(userId, courseId);
+          const course = getCourseById(courseId);
+          if (!course) return;
+
+          const previousProgress = enrollment?.progress || 0;
+          const result = await completeLessonForUser({
+            userId,
+            courseId,
+            lessonId,
+            totalLessons: course.lessons?.length || 0,
+            previouslyCompleted: Boolean(enrollment?.startDate),
+            previousProgress,
+          });
+
+          await loadEnrollments(userId);
+
+          // Refresh profile points + badge records
+          const { data: profileRow } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+          if (profileRow) {
+            const nextUser = { ...user, ...profileRow, id: userId };
+            setUser(nextUser);
+            await syncBadges(nextUser);
+          }
+
+          incrementDailyActivity(userId, 1);
+        } catch (error) {
+          console.error('Complete lesson error:', error);
+        }
+      })();
+      return;
+    }
+
     const enrollment = getEnrollment(userId, courseId);
     if (!enrollment) return;
 
@@ -865,6 +1334,10 @@ export const AppProvider = ({ children }) => {
   };
 
   const completeCourse = (userId, courseId) => {
+    if (dbEnabled) {
+      // Course completion is driven by lesson completion in DB mode.
+      return;
+    }
     const enrollment = getEnrollment(userId, courseId);
     const wasAlreadyComplete = enrollment?.progress === 100;
 
@@ -909,6 +1382,27 @@ export const AppProvider = ({ children }) => {
 
   const updateUser = (updates) => {
     if (!user) return;
+
+    if (dbEnabled) {
+      (async () => {
+        try {
+          const payload = {
+            full_name: updates.name ?? updates.full_name,
+            avatar_url: updates.avatar ?? updates.avatar_url,
+          };
+          const { error } = await supabase
+            .from('profiles')
+            .update(payload)
+            .eq('id', user.id);
+          if (error) throw error;
+          await fetchProfile(user.id);
+        } catch (error) {
+          console.error('Update user error:', error);
+        }
+      })();
+      return;
+    }
+
     const updatedUser = { ...user, ...updates };
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -1001,6 +1495,7 @@ export const AppProvider = ({ children }) => {
     courses,
     quizzes,
     enrollments,
+    earnedBadges,
     reviews,
     likedCourses,
     bookmarkedCourses,

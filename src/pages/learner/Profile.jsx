@@ -51,7 +51,9 @@ import {
   Check,
   Lock,
   X,
+  Loader
 } from 'lucide-react';
+import { generateCertificate } from '../../services/geminiService';
 
 // Badge icon mapping
 const BADGE_ICONS = {
@@ -70,10 +72,11 @@ const BadgeIcon = ({ iconName, className = "w-6 h-6" }) => {
 };
 
 const Profile = () => {
-  const { user, users, courses, enrollments, getUserBadge, quizzes, updateUser, logout } = useApp();
+  const { user, users, courses, enrollments, earnedBadges, getUserBadge, quizzes, updateUser, logout } = useApp();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedCertificate, setSelectedCertificate] = useState(null);
+  const [generatingCertificate, setGeneratingCertificate] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -522,9 +525,36 @@ const Profile = () => {
   };
 
   // Download certificate function
-  const downloadCertificate = (certificate) => {
-    // In a real app, this would generate a PDF
-    alert(`Downloading certificate for "${certificate.courseTitle}"...\nThis would generate a PDF in production.`);
+  const downloadCertificate = async (certificate) => {
+    if (!user || generatingCertificate) return;
+    
+    setGeneratingCertificate(true);
+    try {
+      // Use AI service to generate certificate
+      const completedDate = new Date(certificate.completedDate).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      
+      const svgContent = await generateCertificate(user.name, certificate.courseTitle, completedDate);
+      
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Certificate-${certificate.courseTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.svg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to generate certificate", error);
+      alert("Failed to generate certificate. Please try again.");
+    } finally {
+      setGeneratingCertificate(false);
+    }
   };
 
   // Get activity level color
@@ -2135,10 +2165,11 @@ const Profile = () => {
                         </button>
                         <button
                           onClick={() => downloadCertificate(certificate)}
-                          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                          disabled={generatingCertificate}
+                          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                           title="Download"
                         >
-                          <Download className="w-4 h-4" />
+                          {generatingCertificate ? <Loader className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                         </button>
                         <div className="relative">
                           <button
@@ -2266,10 +2297,11 @@ const Profile = () => {
                   <div className="p-6 bg-gray-50 rounded-b-3xl flex justify-center gap-4">
                     <button
                       onClick={() => downloadCertificate(selectedCertificate)}
-                      className="flex items-center gap-2 px-6 py-3 bg-cyan-600 text-white rounded-xl font-medium hover:bg-cyan-700 transition-colors"
+                      disabled={generatingCertificate}
+                      className="flex items-center gap-2 px-6 py-3 bg-cyan-600 text-white rounded-xl font-medium hover:bg-cyan-700 transition-colors disabled:opacity-70"
                     >
-                      <Download className="w-5 h-5" />
-                      Download Certificate
+                      {generatingCertificate ? <Loader className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                      {generatingCertificate ? 'Generating...' : 'Download Certificate'}
                     </button>
                     <button
                       onClick={() => {

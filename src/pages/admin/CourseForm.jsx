@@ -20,6 +20,8 @@ import {
   Send,
   X,
   Link,
+  Award,
+  Sparkles
 } from 'lucide-react';
 
 const CourseForm = () => {
@@ -96,8 +98,8 @@ const CourseForm = () => {
     );
   }
 
-  const handleSaveCourse = () => {
-    updateCourse(parseInt(courseId), formData);
+  const handleSaveCourse = async () => {
+    await updateCourse(parseInt(courseId), formData);
     alert('Course updated successfully!');
     navigate('/admin/courses');
   };
@@ -128,18 +130,25 @@ const CourseForm = () => {
     setShowLessonModal(true);
   };
 
-  const handleSaveLesson = () => {
-    if (editingLesson) {
-      updateLesson(parseInt(courseId), editingLesson.id, lessonForm);
-    } else {
-      addLesson(parseInt(courseId), lessonForm);
+  const handleSaveLesson = async () => {
+    const result = editingLesson
+      ? await updateLesson(parseInt(courseId), editingLesson.id, lessonForm)
+      : await addLesson(parseInt(courseId), lessonForm);
+
+    if (result?.ok) {
+      setShowLessonModal(false);
+      return;
     }
-    setShowLessonModal(false);
+
+    alert(result?.message || 'Failed to save lesson. Please try again.');
   };
 
-  const handleDeleteLesson = (lessonId) => {
+  const handleDeleteLesson = async (lessonId) => {
     if (window.confirm('Are you sure you want to delete this lesson?')) {
-      deleteLesson(parseInt(courseId), lessonId);
+      const result = await deleteLesson(parseInt(courseId), lessonId);
+      if (!result?.ok) {
+        alert(result?.message || 'Failed to delete lesson.');
+      }
     }
   };
 
@@ -333,7 +342,7 @@ const CourseForm = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="border-b border-gray-200">
           <nav className="flex space-x-8 px-6">
-            {['content', 'description', 'options', 'quiz'].map((tab) => (
+            {['content', 'description', 'options', 'quiz', 'rewards'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -428,7 +437,7 @@ const CourseForm = () => {
                 </label>
                 <select
                   value={formData.adminId || ''}
-                  onChange={(e) => setFormData({ ...formData, adminId: parseInt(e.target.value) })}
+                  onChange={(e) => setFormData({ ...formData, adminId: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
                   <option value="">Select Admin</option>
@@ -517,6 +526,53 @@ const CourseForm = () => {
                       </button>
                     </div>
                   ))}
+              </div>
+            </div>
+          )}
+
+          {/* Rewards Tab */}
+          {activeTab === 'rewards' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Completion Rewards</h3>
+                <p className="text-gray-500 mb-6">Configure what students receive upon completing this course.</p>
+                
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
+                      <Award className="w-8 h-8" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-base font-semibold text-gray-900">
+                          Course Certificate
+                        </label>
+                         <button 
+                            type="button"
+                            onClick={() => setFormData({...formData, certificateEnabled: !formData.certificateEnabled})}
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ring-2 ring-primary-600 ring-offset-2 ${formData.certificateEnabled ? 'bg-primary-600' : 'bg-gray-200'}`}
+                         >
+                            <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${formData.certificateEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                         </button>
+                      </div>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Automatically generate a personalized certificate for students when they complete all lessons.
+                      </p>
+                      
+                      {formData.certificateEnabled && (
+                        <div className="bg-white p-4 rounded-lg border border-gray-200">
+                          <div className="flex items-center gap-2 text-sm text-blue-600 mb-2">
+                             <Sparkles className="w-4 h-4"/>
+                             <span className="font-medium">AI Certificate Generation Active</span>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            Certificates will include the student's name, course title, completion date, and a unique AI-generated congratulatory note.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

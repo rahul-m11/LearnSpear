@@ -28,7 +28,9 @@ import {
   Video,
   FileText,
   HelpCircle,
+  Loader
 } from 'lucide-react';
+import { generateCertificate } from '../../services/geminiService';
 
 const CourseDetail = () => {
   const { courseId } = useParams();
@@ -52,6 +54,39 @@ const CourseDetail = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [newReview, setNewReview] = useState({ rating: 5, review: '' });
   const [isLiked, setIsLiked] = useState(false);
+  const [generatingCertificate, setGeneratingCertificate] = useState(false);
+
+  const handleDownloadCertificate = async () => {
+    if (!user || !course) return;
+    setGeneratingCertificate(true);
+    try {
+      // Format date nicely
+      const dateObj = enrollment?.completedDate ? new Date(enrollment.completedDate) : new Date();
+      const completionDate = dateObj.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      
+      const svgContent = await generateCertificate(user.name, course.title, completionDate);
+      
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Certificate-${course.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.svg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to generate certificate", error);
+      alert("Failed to generate certificate. Please try again.");
+    } finally {
+      setGeneratingCertificate(false);
+    }
+  };
 
   if (!course) {
     return (
@@ -295,9 +330,26 @@ const CourseDetail = () => {
                       <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
                         <Award className="w-5 h-5 text-green-600" />
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className="font-semibold text-gray-900">Certificate</p>
-                        <p className="text-sm">Upon completion</p>
+                        {enrollment?.progress === 100 && (course.certificateEnabled !== false) ? (
+                          <div className="mt-1">
+                            <button 
+                              onClick={handleDownloadCertificate}
+                              disabled={generatingCertificate}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-70"
+                            >
+                              {generatingCertificate ? (
+                                <Loader className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Download className="w-3 h-3" />
+                              )}
+                              {generatingCertificate ? 'Generating...' : 'Download Certificate'}
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-sm">Upon completion</p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-gray-600">
