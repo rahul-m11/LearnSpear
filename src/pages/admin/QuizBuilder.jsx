@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { ArrowLeft, Plus, Trash2, Award } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Award, Sparkles, Loader2 } from 'lucide-react';
+import { generateQuizFromTranscript } from '../../services/geminiService';
 
 const QuizBuilder = () => {
   const { courseId, quizId } = useParams();
@@ -19,6 +20,10 @@ const QuizBuilder = () => {
   });
   const [selectedQuestion, setSelectedQuestion] = useState(0);
   const [showRewards, setShowRewards] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showTranscriptModal, setShowTranscriptModal] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [numberOfQuestions, setNumberOfQuestions] = useState(5);
 
   const currentQuestion = questions[selectedQuestion] || {
     id: Date.now(),
@@ -78,6 +83,36 @@ const QuizBuilder = () => {
     navigate(`/admin/courses/${courseId}`);
   };
 
+  const handleGenerateWithAI = async () => {
+    if (!transcript.trim()) {
+      alert('Please enter a video transcript first!');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const generatedQuestions = await generateQuizFromTranscript(transcript, numberOfQuestions);
+      setQuestions(generatedQuestions);
+      setShowTranscriptModal(false);
+      setSelectedQuestion(0);
+      alert(`Successfully generated ${generatedQuestions.length} questions! You can now edit them as needed.`);
+    } catch (error) {
+      console.error('Error generating quiz:', error);
+      alert('Failed to generate quiz. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleOpenAIModal = () => {
+    // Try to get transcript from course lessons
+    const videoLessons = course?.lessons?.filter(l => l.type === 'video' && l.transcript);
+    if (videoLessons && videoLessons.length > 0) {
+      setTranscript(videoLessons.map(l => l.transcript).join('\n\n'));
+    }
+    setShowTranscriptModal(true);
+  };
+
   return (
     <div className="max-w-6xl">
       <div className="mb-6">
@@ -93,12 +128,21 @@ const QuizBuilder = () => {
             <h1 className="text-3xl font-bold text-gray-900">Quiz Builder</h1>
             <p className="text-gray-600 mt-1">{course?.title}</p>
           </div>
-          <button
-            onClick={handleSave}
-            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-          >
-            Save Quiz
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleOpenAIModal}
+              className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all"
+            >
+              <Sparkles className="w-5 h-5" />
+              <span>Generate with AI</span>
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            >
+              Save Quiz
+            </button>
+          </div>
         </div>
       </div>
 
@@ -285,6 +329,107 @@ const QuizBuilder = () => {
           </div>
         </div>
       </div>
+
+      {/* AI Generation Modal */}
+      {showTranscriptModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Generate Quiz with AI</h2>
+                  <p className="text-sm text-gray-600">Powered by Google Gemini</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowTranscriptModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+                disabled={isGenerating}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Number of Questions
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={numberOfQuestions}
+                  onChange={(e) => setNumberOfQuestions(parseInt(e.target.value) || 5)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="5"
+                  disabled={isGenerating}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Video Transcript *
+                </label>
+                <textarea
+                  value={transcript}
+                  onChange={(e) => setTranscript(e.target.value)}
+                  rows={12}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 font-mono text-sm"
+                  placeholder="Paste your video transcript here...\n\nThe AI will analyze this content and generate relevant quiz questions to test comprehension."
+                  disabled={isGenerating}
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 Tip: The more detailed your transcript, the better the AI-generated questions will be.
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
+                <h4 className="font-semibold text-purple-900 mb-2 flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4" />
+                  <span>How it works:</span>
+                </h4>
+                <ul className="text-sm text-purple-800 space-y-1">
+                  <li>• AI analyzes your transcript to understand key concepts</li>
+                  <li>• Generates multiple-choice questions with 4 options each</li>
+                  <li>• Questions test comprehension, not just recall</li>
+                  <li>• You can edit all generated questions before saving</li>
+                </ul>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowTranscriptModal(false)}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all"
+                  disabled={isGenerating}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleGenerateWithAI}
+                  disabled={isGenerating || !transcript.trim()}
+                  className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Generating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5" />
+                      <span>Generate Questions</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

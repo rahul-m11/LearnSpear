@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 const CoursesDashboard = () => {
-  const { courses, createCourse, deleteCourse } = useApp();
+  const { user, courses, createCourse, deleteCourse } = useApp();
   const navigate = useNavigate();
   const [view, setView] = useState('grid'); // 'grid' or 'list'
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,7 +26,17 @@ const CoursesDashboard = () => {
   const [newCourseName, setNewCourseName] = useState('');
   const [activeMenu, setActiveMenu] = useState(null);
 
-  const filteredCourses = courses.filter((course) =>
+  const isAdmin = user?.role === 'admin';
+  const isInstructor = user?.role === 'instructor';
+
+  // Filter courses based on role
+  const relevantCourses = isAdmin
+    ? courses
+    : isInstructor
+    ? courses.filter((c) => c.responsibleId === user.id || c.adminId === user.id)
+    : courses;
+
+  const filteredCourses = relevantCourses.filter((course) =>
     course.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -38,8 +48,9 @@ const CoursesDashboard = () => {
         tags: [],
         image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80',
         website: '',
-        responsibleId: null,
-        published: false,
+        responsibleId: user.id,
+        adminId: user.id,
+        published: true,
         visibility: 'everyone',
         access: 'open',
         price: 0,

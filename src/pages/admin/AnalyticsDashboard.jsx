@@ -38,7 +38,8 @@ const AnalyticsDashboard = () => {
   // Filter courses based on role
   const relevantCourses = useMemo(() => {
     if (isAdmin) return courses;
-    if (isInstructor) return courses.filter((c) => c.responsibleId === user.id || c.adminId === user.id);
+    // Show all courses to instructors as well to see global performance
+    if (isInstructor) return courses;
     return courses;
   }, [courses, user, isAdmin, isInstructor]);
 
@@ -114,15 +115,63 @@ const AnalyticsDashboard = () => {
   const topViewedCourses = [...coursePerformance].sort((a, b) => b.views - a.views).slice(0, 5);
 
   const monthlyData = useMemo(() => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return months.map((month, index) => ({
-      month,
-      sales: Math.floor(Math.random() * 30) + 5 + (index * 2),
-      revenue: Math.floor(Math.random() * 800) + 200 + (index * 80),
-      enrollments: Math.floor(Math.random() * 50) + 15 + (index * 4),
-      views: Math.floor(Math.random() * 500) + 100 + (index * 50),
-    }));
-  }, []);
+    let labels = [];
+    let dataPoints = [];
+
+    if (timeRange === 'week') {
+      // Last 7 days
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const today = new Date().getDay();
+      for (let i = 6; i >= 0; i--) {
+        const dayIndex = (today - i + 7) % 7;
+        labels.push(days[dayIndex]);
+      }
+      dataPoints = labels.map((day, index) => ({
+        month: day,
+        sales: Math.floor(Math.random() * 10) + 2 + index,
+        revenue: Math.floor(Math.random() * 200) + 50 + (index * 20),
+        enrollments: Math.floor(Math.random() * 15) + 3 + index,
+        views: Math.floor(Math.random() * 150) + 30 + (index * 15),
+      }));
+    } else if (timeRange === 'month') {
+      // Last 30 days (grouped by weeks)
+      labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+      dataPoints = labels.map((week, index) => ({
+        month: week,
+        sales: Math.floor(Math.random() * 20) + 5 + (index * 3),
+        revenue: Math.floor(Math.random() * 400) + 100 + (index * 40),
+        enrollments: Math.floor(Math.random() * 30) + 8 + (index * 4),
+        views: Math.floor(Math.random() * 300) + 60 + (index * 30),
+      }));
+    } else if (timeRange === 'quarter') {
+      // Last 3 months
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const currentMonth = new Date().getMonth();
+      for (let i = 2; i >= 0; i--) {
+        const monthIndex = (currentMonth - i + 12) % 12;
+        labels.push(months[monthIndex]);
+      }
+      dataPoints = labels.map((month, index) => ({
+        month,
+        sales: Math.floor(Math.random() * 25) + 10 + (index * 5),
+        revenue: Math.floor(Math.random() * 600) + 200 + (index * 60),
+        enrollments: Math.floor(Math.random() * 40) + 15 + (index * 8),
+        views: Math.floor(Math.random() * 400) + 100 + (index * 40),
+      }));
+    } else {
+      // Full year - 12 months
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      dataPoints = months.map((month, index) => ({
+        month,
+        sales: Math.floor(Math.random() * 30) + 5 + (index * 2),
+        revenue: Math.floor(Math.random() * 800) + 200 + (index * 80),
+        enrollments: Math.floor(Math.random() * 50) + 15 + (index * 4),
+        views: Math.floor(Math.random() * 500) + 100 + (index * 50),
+      }));
+    }
+
+    return dataPoints;
+  }, [timeRange]);
 
   const categoryDistribution = useMemo(() => {
     const categories = {};
@@ -250,15 +299,27 @@ const AnalyticsDashboard = () => {
                 </div>
               </div>
               <div className="flex items-end justify-between h-64 gap-2">
-                {monthlyData.map((data) => (
-                  <div key={data.month} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full flex flex-col items-center gap-1 h-52 justify-end">
-                      <div className="w-full bg-green-500 rounded-t transition-all duration-500 hover:bg-green-600 cursor-pointer" style={{ height: `${(data.revenue / 1200) * 100}%` }} title={`Revenue: $${data.revenue}`}></div>
-                      <div className="w-full bg-blue-500 rounded-t transition-all duration-500 hover:bg-blue-600 cursor-pointer" style={{ height: `${(data.sales / 50) * 100}%` }} title={`Sales: ${data.sales}`}></div>
+                {monthlyData.map((data) => {
+                  const maxRevenue = Math.max(...monthlyData.map(d => d.revenue));
+                  const maxSales = Math.max(...monthlyData.map(d => d.sales));
+                  return (
+                    <div key={data.month} className="flex-1 flex flex-col items-center gap-1">
+                      <div className="w-full flex flex-col items-center gap-1 h-52 justify-end">
+                        <div 
+                          className="w-full bg-green-500 rounded-t transition-all duration-500 hover:bg-green-600 cursor-pointer" 
+                          style={{ height: `${(data.revenue / maxRevenue) * 100}%` }} 
+                          title={`Revenue: $${data.revenue}`}
+                        ></div>
+                        <div 
+                          className="w-full bg-blue-500 rounded-t transition-all duration-500 hover:bg-blue-600 cursor-pointer" 
+                          style={{ height: `${(data.sales / maxSales) * 100}%` }} 
+                          title={`Sales: ${data.sales}`}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-gray-500 mt-1">{data.month}</span>
                     </div>
-                    <span className="text-xs text-gray-500 mt-1">{data.month}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -449,15 +510,27 @@ const AnalyticsDashboard = () => {
                 </div>
               </div>
               <div className="flex items-end justify-between h-64 gap-2">
-                {monthlyData.map((data) => (
-                  <div key={data.month} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full flex flex-col items-center gap-1 h-52 justify-end">
-                      <div className="w-full bg-purple-400 rounded-t transition-all duration-500 hover:bg-purple-500 cursor-pointer" style={{ height: `${(data.views / 600) * 100}%` }} title={`Views: ${data.views}`}></div>
-                      <div className="w-full bg-green-500 rounded-t transition-all duration-500 hover:bg-green-600 cursor-pointer" style={{ height: `${(data.enrollments / 80) * 100}%` }} title={`Enrollments: ${data.enrollments}`}></div>
+                {monthlyData.map((data) => {
+                  const maxViews = Math.max(...monthlyData.map(d => d.views));
+                  const maxEnrollments = Math.max(...monthlyData.map(d => d.enrollments));
+                  return (
+                    <div key={data.month} className="flex-1 flex flex-col items-center gap-1">
+                      <div className="w-full flex flex-col items-center gap-1 h-52 justify-end">
+                        <div 
+                          className="w-full bg-purple-400 rounded-t transition-all duration-500 hover:bg-purple-500 cursor-pointer" 
+                          style={{ height: `${(data.views / maxViews) * 100}%` }} 
+                          title={`Views: ${data.views}`}
+                        ></div>
+                        <div 
+                          className="w-full bg-green-500 rounded-t transition-all duration-500 hover:bg-green-600 cursor-pointer" 
+                          style={{ height: `${(data.enrollments / maxEnrollments) * 100}%` }} 
+                          title={`Enrollments: ${data.enrollments}`}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-gray-500 mt-1">{data.month}</span>
                     </div>
-                    <span className="text-xs text-gray-500 mt-1">{data.month}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

@@ -15,6 +15,7 @@ const AdminLayout = () => {
 
   const navItems = [
     { path: '/admin/dashboard', label: 'Analytics', icon: BarChart3 },
+    { path: '/admin/courses', label: 'My Courses', icon: BookOpen },
     { path: '/admin/reporting', label: 'Reports', icon: PieChart },
   ];
 

@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Users, Play, Clock, CheckCircle, Settings } from 'lucide-react';
 
 const ReportingDashboard = () => {
-  const { enrollments, courses, users } = useApp();
+  const { user, enrollments, courses, users } = useApp();
   const [filterStatus, setFilterStatus] = useState('all');
   const [visibleColumns, setVisibleColumns] = useState({
     coursePrice: true,
@@ -17,16 +17,33 @@ const ReportingDashboard = () => {
   });
   const [showColumnSettings, setShowColumnSettings] = useState(false);
 
+  const isAdmin = user?.role === 'admin';
+  const isInstructor = user?.role === 'instructor';
+
+  // Filter courses based on role
+  const relevantCourses = isAdmin
+    ? courses
+    : isInstructor
+    ? courses // Allow instructors to see all courses reporting
+    : courses;
+
+  const relevantCourseIds = relevantCourses.map((c) => c.id);
+
+  // Filter enrollments for relevant courses only
+  const relevantEnrollments = enrollments.filter((e) =>
+    relevantCourseIds.includes(e.courseId)
+  );
+
   // Calculate stats
   const stats = {
-    total: enrollments.length,
-    notStarted: enrollments.filter((e) => e.status === 'not-started').length,
-    inProgress: enrollments.filter((e) => e.status === 'in-progress').length,
-    completed: enrollments.filter((e) => e.status === 'completed').length,
+    total: relevantEnrollments.length,
+    notStarted: relevantEnrollments.filter((e) => e.status === 'not-started').length,
+    inProgress: relevantEnrollments.filter((e) => e.status === 'in-progress').length,
+    completed: relevantEnrollments.filter((e) => e.status === 'completed').length,
   };
 
   // Filter enrollments
-  const filteredEnrollments = enrollments.filter((enrollment) => {
+  const filteredEnrollments = relevantEnrollments.filter((enrollment) => {
     if (filterStatus === 'all') return true;
     return enrollment.status === filterStatus;
   });

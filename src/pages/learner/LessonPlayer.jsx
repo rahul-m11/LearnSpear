@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { generateSkipQuizQuestions } from '../../services/geminiService';
 import {
   ArrowLeft,
   ChevronRight,
@@ -17,6 +18,16 @@ import {
   PartyPopper,
   Sparkles,
   Star,
+  Play,
+  Pause,
+  SkipForward,
+  RotateCcw,
+  RotateCw,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 
 const LessonPlayer = () => {
@@ -47,6 +58,21 @@ const LessonPlayer = () => {
   const [showPointsModal, setShowPointsModal] = useState(false);
   const [earnedPoints, setEarnedPoints] = useState(0);
 
+  // Video player state
+  const videoRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isSkipUnlocked, setIsSkipUnlocked] = useState(false);
+  const [showSkipQuiz, setShowSkipQuiz] = useState(false);
+  const [skipQuizState, setSkipQuizState] = useState('intro');
+  const [skipQuizAnswers, setSkipQuizAnswers] = useState([]);
+  const [currentSkipQuestion, setCurrentSkipQuestion] = useState(0);
+  const [skipQuizQuestions, setSkipQuizQuestions] = useState([]);
+
   const quiz = currentLesson?.type === 'quiz' ? getQuizById(currentLesson.quizId) : null;
   const quizAttempts = quiz ? getQuizAttempts(user?.id, quiz.id) : [];
   const attemptNumber = quizAttempts.length + 1;
@@ -57,6 +83,13 @@ const LessonPlayer = () => {
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
     setQuizAnswers([]);
+    setIsSkipUnlocked(false);
+    setShowSkipQuiz(false);
+    
+    // Generate skip quiz questions if video has transcript
+    if (currentLesson?.type === 'video' && currentLesson?.transcript) {
+      generateSkipQuiz(currentLesson.transcript);
+    }
   }, [lessonId]);
 
   if (!course || !currentLesson || !user) {
@@ -78,6 +111,168 @@ const LessonPlayer = () => {
   const isLessonCompleted = enrollment?.completedLessons.includes(currentLesson.id);
   const nextLesson = currentIndex < course.lessons.length - 1 ? course.lessons[currentIndex + 1] : null;
   const prevLesson = currentIndex > 0 ? course.lessons[currentIndex - 1] : null;
+
+  // Video player functions
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleBackward = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
+    }
+  };
+
+  const handleForward = () => {
+    if (videoRef.current && isSkipUnlocked) {
+      videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10);
+    }
+  };
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const handleVolumeChange = (e) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    if (videoRef.current) {
+      videoRef.current.volume = newVolume;
+    }
+  };
+
+  const handlePlaybackRateChange = (rate) => {
+    setPlaybackRate(rate);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = rate;
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const toggleFullscreen = () => {
+    if (videoRef.current) {
+      if (videoRef.current.requestFullscreen) {
+        videoRef.current.requestFullscreen();
+      }
+    }
+  };
+
+  // Generate AI quiz from transcript (simulated)
+  const generateSkipQuiz = async (transcript) => {
+    try {
+      const questions = await generateSkipQuizQuestions(transcript);
+      setSkipQuizQuestions(questions);
+    } catch (error) {
+      console.error('Error generating skip quiz:', error);
+      // Fallback to basic questions if AI fails
+      const fallbackQuestions = [
+        {
+          id: 1,
+          text: "Based on the video content, what is the main topic discussed?",
+          options: [
+            "Introduction to the subject",
+            "Advanced techniques",
+            "Practical applications",
+            "Historical background"
+          ],
+          correctAnswer: 0
+        },
+        {
+          id: 2,
+          text: "What key concept was explained in this section?",
+          options: [
+            "Basic principles",
+            "Core methodology",
+            "Implementation steps",
+            "Common mistakes"
+          ],
+          correctAnswer: 1
+        },
+        {
+          id: 3,
+          text: "Which example was provided to illustrate the concept?",
+          options: [
+            "Real-world case study",
+            "Theoretical example",
+            "Industry standard",
+            "Practical demonstration"
+          ],
+          correctAnswer: 3
+        }
+      ];
+      setSkipQuizQuestions(fallbackQuestions);
+    }
+  };
+
+  const handleSkipButtonClick = () => {
+    if (isSkipUnlocked) {
+      handleForward();
+    } else {
+      setShowSkipQuiz(true);
+      setSkipQuizState('intro');
+    }
+  };
+
+  const handleStartSkipQuiz = () => {
+    setSkipQuizState('question');
+    setCurrentSkipQuestion(0);
+    setSkipQuizAnswers([]);
+    setSelectedAnswer(null);
+  };
+
+  const handleSkipQuizAnswer = () => {
+    const currentQ = skipQuizQuestions[currentSkipQuestion];
+    const isCorrect = selectedAnswer === currentQ.correctAnswer;
+    
+    const newAnswers = [...skipQuizAnswers, { isCorrect }];
+    setSkipQuizAnswers(newAnswers);
+
+    if (currentSkipQuestion < skipQuizQuestions.length - 1) {
+      setCurrentSkipQuestion(currentSkipQuestion + 1);
+      setSelectedAnswer(null);
+    } else {
+      // Quiz completed - check if passed
+      const correctCount = newAnswers.filter(a => a.isCorrect).length;
+      const passThreshold = Math.ceil(skipQuizQuestions.length * 0.7); // 70% to pass
+      
+      if (correctCount >= passThreshold) {
+        setIsSkipUnlocked(true);
+        setSkipQuizState('passed');
+        setTimeout(() => {
+          setShowSkipQuiz(false);
+        }, 2000);
+      } else {
+        setSkipQuizState('failed');
+      }
+    }
+  };
 
   const handleCompleteLesson = () => {
     completeLesson(user.id, parseInt(courseId), currentLesson.id);
@@ -148,14 +343,162 @@ const LessonPlayer = () => {
 
   const renderViewer = () => {
     if (currentLesson.type === 'video') {
+      const isYouTube = currentLesson.url.includes('youtube.com') || currentLesson.url.includes('youtu.be');
+      
       return (
-        <div className="aspect-video bg-black rounded-lg overflow-hidden">
-          <iframe
-            src={currentLesson.url}
-            className="w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+        <div className="bg-black rounded-lg overflow-hidden">
+          <div className="aspect-video bg-black relative group">
+            {isYouTube ? (
+              <iframe
+                src={currentLesson.url}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <>
+                <video
+                  ref={videoRef}
+                  src={currentLesson.url}
+                  className="w-full h-full"
+                  onTimeUpdate={handleTimeUpdate}
+                  onLoadedMetadata={handleLoadedMetadata}
+                  onClick={togglePlay}
+                />
+                
+                {/* Custom Controls */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Progress Bar - Non-interactive */}
+                  <div className="mb-3">
+                    <div className="w-full bg-gray-600 rounded-full h-1.5 cursor-not-allowed">
+                      <div
+                        className="bg-primary-500 h-1.5 rounded-full transition-all"
+                        style={{ width: `${(currentTime / duration) * 100}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-white mt-1">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      {/* Play/Pause */}
+                      <button
+                        onClick={togglePlay}
+                        className="p-2 text-white hover:bg-white/20 rounded-full transition-colors"
+                      >
+                        {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+                      </button>
+
+                      {/* Backward 10s */}
+                      <button
+                        onClick={handleBackward}
+                        className="p-2 text-white hover:bg-white/20 rounded-full transition-colors"
+                        title="Backward 10s"
+                      >
+                        <RotateCcw className="w-5 h-5" />
+                      </button>
+
+                      {/* Forward 10s (Locked) */}
+                      <button
+                        onClick={handleSkipButtonClick}
+                        className={`p-2 rounded-full transition-colors ${
+                          isSkipUnlocked
+                            ? 'text-white hover:bg-white/20'
+                            : 'text-yellow-400 hover:bg-yellow-400/20'
+                        }`}
+                        title={isSkipUnlocked ? "Forward 10s" : "Take quiz to unlock skip"}
+                      >
+                        {isSkipUnlocked ? (
+                          <RotateCw className="w-5 h-5" />
+                        ) : (
+                          <div className="relative">
+                            <RotateCw className="w-5 h-5" />
+                            <Lock className="w-3 h-3 absolute -top-1 -right-1" />
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Volume */}
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={toggleMute}
+                          className="p-2 text-white hover:bg-white/20 rounded-full transition-colors"
+                        >
+                          {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                        </button>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          value={volume}
+                          onChange={handleVolumeChange}
+                          className="w-20 h-1 bg-gray-600 rounded-full appearance-none cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Playback Speed */}
+                      <div className="relative group/speed">
+                        <button className="px-3 py-1 text-white text-sm bg-white/10 rounded hover:bg-white/20 transition-colors">
+                          {playbackRate}x
+                        </button>
+                        <div className="absolute bottom-full mb-2 left-0 bg-gray-800 rounded-lg p-2 space-y-1 opacity-0 group-hover/speed:opacity-100 transition-opacity pointer-events-none group-hover/speed:pointer-events-auto">
+                          {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map(rate => (
+                            <button
+                              key={rate}
+                              onClick={() => handlePlaybackRateChange(rate)}
+                              className={`block w-full px-3 py-1 text-sm text-left rounded ${
+                                playbackRate === rate
+                                  ? 'bg-primary-600 text-white'
+                                  : 'text-gray-300 hover:bg-gray-700'
+                              }`}
+                            >
+                              {rate}x
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      {/* Fullscreen */}
+                      <button
+                        onClick={toggleFullscreen}
+                        className="p-2 text-white hover:bg-white/20 rounded-full transition-colors"
+                      >
+                        <Maximize className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          
+          {/* Skip Unlock Status */}
+          {!isYouTube && (
+            <div className="bg-gray-900 px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                {isSkipUnlocked ? (
+                  <>
+                    <Unlock className="w-4 h-4 text-green-500" />
+                    <span className="text-sm text-green-500 font-medium">Skip Forward Unlocked</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 text-yellow-500" />
+                    <span className="text-sm text-yellow-500 font-medium">Skip Forward Locked - Take Quiz to Unlock</span>
+                  </>
+                )}
+              </div>
+              <div className="text-xs text-gray-400">
+                Controls: ◀ Backward 10s | {isSkipUnlocked ? '▶ Forward 10s' : '🔒 Forward (Locked)'} | Speed Control Available
+              </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -533,6 +876,137 @@ const LessonPlayer = () => {
             >
               Continue Learning
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Skip Quiz Modal */}
+      {showSkipQuiz && skipQuizQuestions.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 modal-overlay-enter">
+          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto modal-enter">
+            {skipQuizState === 'intro' && (
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Lock className="w-8 h-8 text-yellow-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-3">Unlock Skip Forward</h2>
+                <p className="text-gray-600 mb-2">
+                  To skip forward in the video, you need to prove you understand the content so far.
+                </p>
+                <p className="text-gray-600 mb-6">
+                  Answer {skipQuizQuestions.length} questions correctly (70% to pass)
+                </p>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setShowSkipQuiz(false)}
+                    className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleStartSkipQuiz}
+                    className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all"
+                  >
+                    Start Quiz
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {skipQuizState === 'question' && (
+              <div className="p-8">
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm font-medium text-gray-600">
+                      Question {currentSkipQuestion + 1} of {skipQuizQuestions.length}
+                    </span>
+                    <div className="flex space-x-1">
+                      {skipQuizQuestions.map((_, index) => (
+                        <div
+                          key={index}
+                          className={`w-2 h-2 rounded-full transition-all ${
+                            index < currentSkipQuestion
+                              ? 'bg-green-500'
+                              : index === currentSkipQuestion
+                              ? 'bg-primary-600 animate-pulse'
+                              : 'bg-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-6">
+                    {skipQuizQuestions[currentSkipQuestion].text}
+                  </h3>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  {skipQuizQuestions[currentSkipQuestion].options.map((option, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedAnswer(index)}
+                      className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                        selectedAnswer === index
+                          ? 'border-primary-600 bg-primary-50'
+                          : 'border-gray-200 hover:border-primary-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                            selectedAnswer === index
+                              ? 'border-primary-600 bg-primary-600'
+                              : 'border-gray-300'
+                          }`}
+                        >
+                          {selectedAnswer === index && (
+                            <div className="w-3 h-3 bg-white rounded-full" />
+                          )}
+                        </div>
+                        <span className="text-gray-900">{option}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleSkipQuizAnswer}
+                  disabled={selectedAnswer === null}
+                  className="w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all"
+                >
+                  {currentSkipQuestion === skipQuizQuestions.length - 1 ? 'Submit' : 'Next Question'}
+                </button>
+              </div>
+            )}
+
+            {skipQuizState === 'passed' && (
+              <div className="p-8 text-center">
+                <Unlock className="w-16 h-16 text-green-600 mx-auto mb-4 animate-bounce-in" />
+                <h2 className="text-2xl font-bold text-gray-900 mb-3">Quiz Passed!</h2>
+                <p className="text-gray-600 mb-2">
+                  You've proven your understanding of the content.
+                </p>
+                <p className="text-green-600 font-semibold">
+                  Skip Forward is now unlocked! \u2713
+                </p>
+              </div>
+            )}
+
+            {skipQuizState === 'failed' && (
+              <div className="p-8 text-center">
+                <Lock className="w-16 h-16 text-red-600 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-gray-900 mb-3">Not Quite There</h2>
+                <p className="text-gray-600 mb-6">
+                  You didn't pass the quiz. Please continue watching the video to better understand the content.
+                </p>
+                <button
+                  onClick={() => setShowSkipQuiz(false)}
+                  className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all"
+                >
+                  Continue Watching
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

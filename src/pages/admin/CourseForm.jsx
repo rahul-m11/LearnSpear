@@ -26,6 +26,7 @@ const CourseForm = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { 
+    user,
     getCourseById, 
     updateCourse, 
     addLesson, 
@@ -40,6 +41,12 @@ const CourseForm = () => {
   } = useApp();
 
   const course = getCourseById(parseInt(courseId));
+  
+  // Check if user has permission to edit this course
+  const isAdmin = user?.role === 'admin';
+  const isInstructor = user?.role === 'instructor';
+  const hasPermission = isAdmin || (isInstructor && (course?.responsibleId === user.id || course?.adminId === user.id));
+  
   const [activeTab, setActiveTab] = useState('content');
   const [formData, setFormData] = useState(course || {});
   const [showLessonModal, setShowLessonModal] = useState(false);
@@ -65,17 +72,25 @@ const CourseForm = () => {
     allowDownload: false,
     responsibleId: null,
     attachments: [],
+    moduleNumber: 1,
+    videoFile: null,
+    transcript: '',
   });
 
   // Attachment form state
   const [newAttachment, setNewAttachment] = useState({ type: 'link', name: '', url: '' });
 
-  if (!course) {
+  if (!course || !hasPermission) {
     return (
       <div className="text-center py-12">
-        <p>Course not found</p>
-        <button onClick={() => navigate('/admin/courses')} className="mt-4 text-primary-600">
-          Back to Courses
+        <p className="text-gray-900 font-semibold mb-2">
+          {!course ? 'Course not found' : 'You do not have permission to edit this course'}
+        </p>
+        <button 
+          onClick={() => navigate('/admin/courses')} 
+          className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+        >
+          Back to My Courses
         </button>
       </div>
     );
@@ -97,6 +112,9 @@ const CourseForm = () => {
       allowDownload: false,
       responsibleId: null,
       attachments: [],
+      moduleNumber: (course.lessons.length || 0) + 1,
+      videoFile: null,
+      transcript: '',
     });
     setLessonTab('content');
     setShowLessonModal(true);
@@ -533,16 +551,30 @@ const CourseForm = () => {
             <div className="p-6">
               {lessonTab === 'content' && (
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Lesson Title *
-                    </label>
-                    <input
-                      type="text"
-                      value={lessonForm.title}
-                      onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Lesson Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={lessonForm.title}
+                        onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Module Number *
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={lessonForm.moduleNumber}
+                        onChange={(e) => setLessonForm({ ...lessonForm, moduleNumber: parseInt(e.target.value) || 1 })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
@@ -560,16 +592,81 @@ const CourseForm = () => {
                     <>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Video URL
+                          Upload Method
                         </label>
-                        <input
-                          type="url"
-                          value={lessonForm.url}
-                          onChange={(e) => setLessonForm({ ...lessonForm, url: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                          placeholder="https://youtube.com/watch?v=..."
-                        />
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <button
+                            type="button"
+                            onClick={() => setLessonForm({ ...lessonForm, videoFile: null })}
+                            className={`px-4 py-2 border-2 rounded-lg transition-all ${
+                              !lessonForm.videoFile
+                                ? 'border-primary-600 bg-primary-50 text-primary-700'
+                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                            }`}
+                          >
+                            Video URL
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setLessonForm({ ...lessonForm, videoFile: 'placeholder' })}
+                            className={`px-4 py-2 border-2 rounded-lg transition-all ${
+                              lessonForm.videoFile
+                                ? 'border-primary-600 bg-primary-50 text-primary-700'
+                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                            }`}
+                          >
+                            Upload File
+                          </button>
+                        </div>
                       </div>
+                      {!lessonForm.videoFile ? (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Video URL
+                          </label>
+                          <input
+                            type="url"
+                            value={lessonForm.url}
+                            onChange={(e) => setLessonForm({ ...lessonForm, url: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                            placeholder="https://youtube.com/watch?v=... or upload file"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">YouTube, Vimeo, or direct video URL</p>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Video File
+                          </label>
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-400 transition-colors">
+                            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                            <p className="text-sm text-gray-600 mb-2">Click to upload or drag and drop</p>
+                            <p className="text-xs text-gray-500">MP4, WebM, or AVI (max 500MB)</p>
+                            <input
+                              type="file"
+                              accept="video/*"
+                              className="hidden"
+                              id="video-upload"
+                              onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  setLessonForm({ ...lessonForm, url: URL.createObjectURL(file) });
+                                  alert(`File "${file.name}" ready for upload. In production, this would upload to your server.`);
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor="video-upload"
+                              className="mt-3 inline-block px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 cursor-pointer"
+                            >
+                              Choose File
+                            </label>
+                            {lessonForm.url && (
+                              <p className="text-xs text-green-600 mt-2">✓ File selected</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Duration (minutes)
@@ -582,6 +679,19 @@ const CourseForm = () => {
                           }
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Video Transcript (Optional)
+                        </label>
+                        <textarea
+                          value={lessonForm.transcript}
+                          onChange={(e) => setLessonForm({ ...lessonForm, transcript: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                          rows={4}
+                          placeholder="Paste or type video transcript for AI quiz generation..."
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Used to generate skip-unlock quiz questions</p>
                       </div>
                     </>
                   )}
