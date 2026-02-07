@@ -199,12 +199,12 @@ const AnalyticsDashboard = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white hover-lift">
+            <div className="bg-gradient-to-br from-cyan-500 to-sky-600 rounded-xl shadow-lg p-6 text-white hover-lift">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm mb-1 flex items-center gap-1"><Users className="w-4 h-4" /> Total Students</p>
+                  <p className="text-cyan-100 text-sm mb-1 flex items-center gap-1"><Users className="w-4 h-4" /> Total Students</p>
                   <p className="text-4xl font-bold">{stats.totalLearners}</p>
-                  <p className="text-purple-200 text-sm flex items-center mt-2">
+                  <p className="text-cyan-200 text-sm flex items-center mt-2">
                     <UserCheck className="w-4 h-4 mr-1" />{stats.totalEnrollments} enrollments
                   </p>
                 </div>
@@ -214,12 +214,12 @@ const AnalyticsDashboard = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white hover-lift">
+            <div className="bg-gradient-to-br from-cyan-500 via-sky-500 to-slate-600 rounded-xl shadow-lg p-6 text-white hover-lift">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-100 text-sm mb-1 flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Completion Rate</p>
+                  <p className="text-cyan-100 text-sm mb-1 flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Completion Rate</p>
                   <p className="text-4xl font-bold">{stats.completionRate}%</p>
-                  <p className="text-orange-200 text-sm flex items-center mt-2">
+                  <p className="text-cyan-200 text-sm flex items-center mt-2">
                     <CheckCircle className="w-4 h-4 mr-1" />{stats.completedEnrollments} completed
                   </p>
                 </div>
@@ -383,12 +383,12 @@ const AnalyticsDashboard = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white hover-lift">
+            <div className="bg-gradient-to-br from-cyan-500 to-sky-600 rounded-xl shadow-lg p-6 text-white hover-lift">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm mb-1 flex items-center gap-1"><Eye className="w-4 h-4" /> Total Views</p>
+                  <p className="text-cyan-100 text-sm mb-1 flex items-center gap-1"><Eye className="w-4 h-4" /> Total Views</p>
                   <p className="text-4xl font-bold">{stats.totalViews.toLocaleString()}</p>
-                  <p className="text-purple-200 text-sm flex items-center mt-2">
+                  <p className="text-cyan-200 text-sm flex items-center mt-2">
                     <ArrowUp className="w-4 h-4 mr-1" />+18% this month
                   </p>
                 </div>
@@ -413,12 +413,12 @@ const AnalyticsDashboard = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white hover-lift">
+            <div className="bg-gradient-to-br from-cyan-500 via-sky-500 to-slate-600 rounded-xl shadow-lg p-6 text-white hover-lift">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-100 text-sm mb-1 flex items-center gap-1"><Clapperboard className="w-4 h-4" /> Total Lessons</p>
+                  <p className="text-cyan-100 text-sm mb-1 flex items-center gap-1"><Clapperboard className="w-4 h-4" /> Total Lessons</p>
                   <p className="text-4xl font-bold">{stats.totalLessons}</p>
-                  <p className="text-orange-200 text-sm flex items-center mt-2">
+                  <p className="text-cyan-200 text-sm flex items-center mt-2">
                     <Clock className="w-4 h-4 mr-1" />{stats.totalWatchHours}h watch time
                   </p>
                 </div>

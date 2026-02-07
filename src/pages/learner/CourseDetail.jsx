@@ -62,9 +62,9 @@ const CourseDetail = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Course not found</h2>
           <p className="text-gray-500 mb-6">The course you're looking for doesn't exist.</p>
-          <button 
-            onClick={() => navigate('/courses')} 
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+        <button
+            onClick={() => navigate('/courses')}
+            className="px-6 py-3 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 rounded-xl font-medium hover:shadow-lg transition-all"
           >
             Browse Courses
           </button>
@@ -77,14 +77,14 @@ const CourseDetail = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
+          <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-cyan-100 to-sky-100 rounded-full flex items-center justify-center">
             <Lock className="w-12 h-12 text-blue-500" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign in required</h2>
           <p className="text-gray-500 mb-6">Please login to view this course content.</p>
           <button
             onClick={() => navigate('/login')}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+            className="px-6 py-3 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 rounded-xl font-medium hover:shadow-lg transition-all"
           >
             Sign In
           </button>
@@ -149,7 +149,7 @@ const CourseDetail = () => {
       <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-30">
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20"></div>
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cyan-500/20 via-sky-500/20 to-slate-500/20"></div>
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -214,7 +214,7 @@ const CourseDetail = () => {
               <div className="flex flex-wrap items-center gap-4">
                 <button
                   onClick={() => handleStartLesson(course.lessons[0].id)}
-                  className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-2xl hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-1 transition-all duration-300"
+                  className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 font-semibold rounded-2xl hover:shadow-xl hover:shadow-cyan-400/30 hover:-translate-y-1 transition-all duration-300"
                 >
                   <Play className="w-6 h-6" />
                   <span>{enrollment ? 'Continue Learning' : 'Start Course'}</span>
@@ -262,7 +262,7 @@ const CourseDetail = () => {
                       </div>
                       <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-500 progress-animated"
+                          className="h-full bg-gradient-to-r from-cyan-400 to-sky-500 rounded-full transition-all duration-500 progress-animated"
                           style={{ width: `${enrollment.progress}%` }}
                         />
                       </div>
@@ -471,7 +471,7 @@ const CourseDetail = () => {
                   {user && (
                     <button
                       onClick={() => setShowReviewModal(true)}
-                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 rounded-xl font-medium hover:shadow-lg transition-all"
                     >
                       <MessageSquare className="w-5 h-5" />
                       <span>Write a Review</span>
@@ -586,7 +586,7 @@ const CourseDetail = () => {
               </button>
               <button
                 onClick={handleAddReview}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 rounded-xl font-medium hover:shadow-lg transition-all"
               >
                 Submit Review
               </button>

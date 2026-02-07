@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { LogoIcon } from '../components/LogoIcon';
 import { 
   BookOpen, 
   LogOut, 
@@ -60,12 +61,12 @@ const LearnerLayout = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/30 relative overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-pink-50/40 to-fuchsia-50/30 relative overflow-x-hidden">
       {/* Animated Background Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-br from-purple-400/10 to-pink-400/10 rounded-full blur-3xl floating-element"></div>
-        <div className="absolute top-40 right-20 w-96 h-96 bg-gradient-to-br from-blue-400/10 to-cyan-400/10 rounded-full blur-3xl floating-element-delayed"></div>
-        <div className="absolute bottom-40 left-1/3 w-80 h-80 bg-gradient-to-br from-emerald-400/10 to-teal-400/10 rounded-full blur-3xl floating-element"></div>
+        <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-br from-pink-400/15 to-fuchsia-400/15 rounded-full blur-3xl floating-element"></div>
+        <div className="absolute top-40 right-20 w-96 h-96 bg-gradient-to-br from-rose-400/15 to-pink-400/15 rounded-full blur-3xl floating-element-delayed"></div>
+        <div className="absolute bottom-40 left-1/3 w-80 h-80 bg-gradient-to-br from-pink-400/15 to-purple-400/15 rounded-full blur-3xl floating-element"></div>
       </div>
 
       {/* Navbar */}
@@ -75,20 +76,15 @@ const LearnerLayout = () => {
           : 'bg-transparent'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
+          <div className="flex justify-between items-center h-24 sm:h-20">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-3 group">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity"></div>
-                <div className="relative w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  <BookOpen className="w-6 h-6 text-white" />
-                </div>
+            <Link to="/" className="flex items-center gap-3 group min-w-0">
+              <div className="transform group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                <LogoIcon className="h-12 sm:h-10 w-auto" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
-                  LearnSphere
-                </span>
-                <span className="text-[10px] text-gray-500 font-medium tracking-widest uppercase">
+              <div className="flex flex-col min-w-0">
+                <span className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">LearnSphere</span>
+                <span className="text-[8px] sm:text-[10px] text-gray-500 font-medium tracking-widest uppercase leading-tight">
                   Elevate Your Skills
                 </span>
               </div>
@@ -122,7 +118,7 @@ const LearnerLayout = () => {
                   >
                     <span className="relative z-10">My Learning</span>
                     {inProgressCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-xs rounded-full flex items-center justify-center font-bold notification-badge">
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 text-xs rounded-full flex items-center justify-center font-bold notification-badge">
                         {inProgressCount}
                       </span>
                     )}
@@ -267,7 +263,7 @@ const LearnerLayout = () => {
                   </Link>
                   <Link
                     to="/register"
-                    className="flex items-center gap-2 px-5 py-2.5 text-white font-medium bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5 transition-all duration-300"
+                    className="flex items-center gap-2 px-5 py-2.5 text-slate-950 font-medium bg-gradient-to-r from-cyan-400 to-sky-500 rounded-xl hover:shadow-lg hover:shadow-cyan-400/25 hover:-translate-y-0.5 transition-all duration-300"
                   >
                     <Sparkles className="w-4 h-4" />
                     <span>Get Started</span>
@@ -322,8 +318,8 @@ const LearnerLayout = () => {
       <footer className="relative mt-24 bg-gradient-to-b from-gray-900 to-gray-950 text-white overflow-hidden">
         {/* Decorative Elements */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-fuchsia-500/10 rounded-full blur-3xl"></div>
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -331,7 +327,7 @@ const LearnerLayout = () => {
             {/* Brand */}
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center space-x-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-fuchsia-500 rounded-xl flex items-center justify-center">
                   <BookOpen className="w-6 h-6 text-white" />
                 </div>
                 <span className="text-2xl font-bold">LearnSphere</span>

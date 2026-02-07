@@ -282,12 +282,12 @@ const Profile = () => {
           isAdmin 
             ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
             : isInstructor 
-            ? 'bg-gradient-to-br from-purple-900 via-indigo-900 to-purple-900' 
-            : 'bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900'
+            ? 'bg-gradient-to-br from-slate-900 via-cyan-900 to-slate-800' 
+            : 'bg-gradient-to-br from-slate-900 via-cyan-900 to-slate-800'
         }`}>
           {/* Decorative Elements */}
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-sky-500/20 rounded-full blur-3xl"></div>
           <div 
             className="absolute inset-0 opacity-10"
             style={{
@@ -327,7 +327,7 @@ const Profile = () => {
                 </div>
               )}
               {isInstructor && (
-                <div className="absolute -bottom-3 -right-3 p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg">
+                <div className="absolute -bottom-3 -right-3 p-3 bg-gradient-to-br from-pink-500 to-fuchsia-500 rounded-xl shadow-lg">
                   <Crown className="w-7 h-7 text-white" />
                 </div>
               )}
@@ -343,13 +343,13 @@ const Profile = () => {
                 <h1 className="text-4xl font-bold">{user.name}</h1>
                 <span className={`px-4 py-1.5 rounded-full text-sm font-semibold flex items-center gap-1.5 ${
                   isAdmin ? 'bg-red-500/30 text-red-200 border border-red-400/30' :
-                  isInstructor ? 'bg-purple-500/30 text-purple-200 border border-purple-400/30' :
+                  isInstructor ? 'bg-cyan-500/30 text-cyan-200 border border-cyan-400/30' :
                   'bg-green-500/30 text-green-200 border border-green-400/30'
                 }`}>
                   {isAdmin ? <><Shield className="w-4 h-4" /> Administrator</> : isInstructor ? <><User className="w-4 h-4" /> Instructor</> : <><GraduationCap className="w-4 h-4" /> Learner</>}
                 </span>
                 {isLearner && learningStreak >= 7 && (
-                  <span className="px-4 py-1.5 rounded-full text-sm font-semibold bg-orange-500/30 text-orange-200 border border-orange-400/30 flex items-center gap-1">
+                  <span className="px-4 py-1.5 rounded-full text-sm font-semibold bg-cyan-500/30 text-cyan-200 border border-cyan-400/30 flex items-center gap-1">
                     <Flame className="w-4 h-4" /> {learningStreak} Day Streak!
                   </span>
                 )}
@@ -392,8 +392,8 @@ const Profile = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 px-5 py-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10 hover:bg-white/15 transition-colors">
-                    <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                      <Target className="w-5 h-5 text-orange-400" />
+                    <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center">
+                      <Target className="w-5 h-5 text-cyan-400" />
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{totalCoursesSold}</div>
@@ -422,8 +422,8 @@ const Profile = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 px-5 py-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10 hover:bg-white/15 transition-colors">
-                    <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                      <Flame className="w-5 h-5 text-orange-400" />
+                    <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center">
+                      <Flame className="w-5 h-5 text-cyan-400" />
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{learningStreak}</div>
@@ -585,7 +585,7 @@ const Profile = () => {
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
                               index === 0 ? 'bg-yellow-100 text-yellow-600' :
                               index === 1 ? 'bg-gray-200 text-gray-600' :
-                              index === 2 ? 'bg-orange-100 text-orange-600' :
+                              index === 2 ? 'bg-cyan-100 text-cyan-600' :
                               'bg-gray-100 text-gray-500'
                             }`}>
                               {index + 1}
@@ -638,7 +638,7 @@ const Profile = () => {
               ) : (
                 <>
                   {/* Learner: Today's Progress Banner */}
-                  <div className="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-3xl shadow-xl p-8 text-white overflow-hidden">
+                  <div className="relative bg-gradient-to-br from-slate-700 via-cyan-600 to-sky-700 rounded-3xl shadow-xl p-8 text-white overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-xl" />
                     <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-xl" />
                     <div className="relative z-10">
@@ -813,7 +813,7 @@ const Profile = () => {
                             </div>
                             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full transition-all duration-700"
+                                className="h-full bg-gradient-to-r from-cyan-400 to-sky-500 rounded-full transition-all duration-700"
                                 style={{ width: `${skill.level}%` }}
                               />
                             </div>
@@ -857,14 +857,14 @@ const Profile = () => {
                         </div>
                         <span className="text-xl font-bold text-blue-600">{adminCourses.length}</span>
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-cyan-50 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-orange-100 rounded-lg">
-                            <Target className="w-5 h-5 text-orange-600" />
+                          <div className="p-2 bg-cyan-100 rounded-lg">
+                            <Target className="w-5 h-5 text-cyan-600" />
                           </div>
                           <span className="text-gray-700">Units Sold</span>
                         </div>
-                        <span className="text-xl font-bold text-orange-600">{totalCoursesSold}</span>
+                        <span className="text-xl font-bold text-cyan-600">{totalCoursesSold}</span>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                         <div className="flex items-center gap-3">
@@ -928,7 +928,7 @@ const Profile = () => {
               ) : (
                 <>
                   {/* Learner: Leaderboard Position */}
-                  <div className="bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 rounded-xl shadow-lg p-6 text-white">
+                  <div className="bg-gradient-to-br from-cyan-400 via-sky-500 to-slate-600 rounded-xl shadow-lg p-6 text-white">
                     <div className="flex items-center gap-3 mb-4">
                       <Crown className="w-8 h-8" />
                       <div>

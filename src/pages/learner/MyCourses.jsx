@@ -250,7 +250,7 @@ const MyCourses = () => {
     <div className="min-h-screen pb-12">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 opacity-90"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-cyan-600 to-slate-800 opacity-90"></div>
         <div className="absolute inset-0 opacity-20" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }}></div>
@@ -264,9 +264,9 @@ const MyCourses = () => {
               </div>
               <h1 className="text-5xl lg:text-6xl font-bold mb-6 animate-fade-in-up">
                 {user ? (
-                  <>Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-pink-200">{user.name.split(' ')[0]}</span>!</>
+                  <>Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 to-sky-200">{user.name.split(' ')[0]}</span>!</>
                 ) : (
-                  <>Unlock Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-pink-200">Potential</span></>
+                  <>Unlock Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 to-sky-200">Potential</span></>
                 )}
               </h1>
               <p className="text-xl text-white/80 mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
@@ -458,7 +458,7 @@ const MyCourses = () => {
                       </div>
                       <button 
                         onClick={() => navigate('/register')}
-                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                        className="px-4 py-2 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 rounded-xl font-medium hover:shadow-lg transition-all"
                       >
                         Get Started
                       </button>
@@ -491,8 +491,8 @@ const MyCourses = () => {
                     onClick={() => setSelectedCategory(category)}
                     className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
                       selectedCategory === category
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-xl shadow-blue-500/40 scale-105 border-2 border-blue-400'
-                        : 'bg-gray-100 text-gray-800 hover:bg-blue-100 hover:text-blue-700 border-2 border-gray-300 hover:border-blue-400 shadow-lg'
+                        ? 'bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 shadow-xl shadow-cyan-400/40 scale-105 border-2 border-cyan-300'
+                        : 'bg-gray-100 text-gray-800 hover:bg-cyan-100 hover:text-cyan-700 border-2 border-gray-300 hover:border-cyan-400 shadow-lg'
                     }`}
                   >
                     {category.charAt(0).toUpperCase() + category.slice(1)}
@@ -502,13 +502,13 @@ const MyCourses = () => {
               <div className="flex items-center gap-1 bg-white rounded-xl p-1.5 shadow-md border-2 border-gray-200">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-2.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}
+                  className={`p-2.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 shadow-md' : 'text-gray-500 hover:text-cyan-600 hover:bg-cyan-50'}`}
                 >
                   <Grid3X3 className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-md' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'}`}
+                  className={`p-2.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 shadow-md' : 'text-gray-500 hover:text-cyan-600 hover:bg-cyan-50'}`}
                 >
                   <List className="w-5 h-5" />
                 </button>
@@ -534,7 +534,7 @@ const MyCourses = () => {
                     style={{ animationDelay: `${0.05 * (index + 1)}s` }}
                   >
                     {/* Card Glow Effect */}
-                    <div className={`absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl -z-10 scale-105`}></div>
+                    <div className={`absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-sky-500/20 to-slate-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl -z-10 scale-105`}></div>
                     
                     {/* Image Container */}
                     <div className={`relative overflow-hidden ${viewMode === 'list' ? 'w-64 flex-shrink-0' : 'h-48'}`}>
@@ -663,8 +663,8 @@ const MyCourses = () => {
                             course.access === 'payment' && !enrollment
                               ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-lg hover:shadow-emerald-500/25'
                               : course.access === 'invitation' && !enrollment
-                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:shadow-amber-500/25'
-                              : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg hover:shadow-blue-500/25'
+                              ? 'bg-gradient-to-r from-sky-400 to-cyan-500 text-slate-950 hover:shadow-lg hover:shadow-sky-400/25'
+                              : 'bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 hover:shadow-lg hover:shadow-cyan-400/25'
                           }`}
                         >
                           {enrollment?.status === 'in-progress' ? (
@@ -696,7 +696,7 @@ const MyCourses = () => {
                 </p>
                 <button 
                   onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                  className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-medium hover:shadow-lg transition-all"
                 >
                   Clear Filters
                 </button>
@@ -714,7 +714,7 @@ const MyCourses = () => {
                   
                   <Link to="/profile" className="block text-center mb-6 group cursor-pointer relative">
                     <div className="relative inline-block">
-                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full blur-lg opacity-30 group-hover:opacity-50 transition-opacity"></div>
+                      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-sky-500 rounded-full blur-lg opacity-30 group-hover:opacity-50 transition-opacity"></div>
                       <img
                         src={user.avatar}
                         alt={user.name}
@@ -804,14 +804,14 @@ const MyCourses = () => {
                         {courses.filter(c => getEnrollment(user.id, c.id)?.status === 'completed').length}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl">
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-cyan-50 to-sky-50 rounded-xl">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
+                        <div className="w-10 h-10 bg-cyan-500 rounded-xl flex items-center justify-center">
                           <Trophy className="w-5 h-5 text-white" />
                         </div>
                         <span className="font-medium text-gray-700">Badges</span>
                       </div>
-                      <span className="text-xl font-bold text-purple-600">
+                      <span className="text-xl font-bold text-cyan-600">
                         {BADGE_LEVELS.filter(b => (user.points || 0) >= b.points).length}
                       </span>
                     </div>

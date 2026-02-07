@@ -16,6 +16,7 @@ import {
   Target,
   ArrowRight,
 } from 'lucide-react';
+import { LogoIcon } from '../../components/LogoIcon';
 
 const Register = () => {
   const { register, user } = useApp();
@@ -96,7 +97,7 @@ const Register = () => {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-500 p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-900 via-cyan-600 to-slate-800 p-12 flex-col justify-between relative overflow-hidden">
         {/* Background decorations */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
@@ -168,10 +169,10 @@ const Register = () => {
           {/* Mobile Logo */}
           <div className="flex justify-center mb-8 lg:hidden">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-white" />
+              <LogoIcon className="h-12 w-auto" />
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-gray-900">LearnSphere</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">LearnSphere</span>
             </Link>
           </div>
 
@@ -349,7 +350,7 @@ const Register = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 py-4 px-6 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-blue-500/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 py-4 px-6 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 font-semibold rounded-xl hover:shadow-lg hover:shadow-cyan-400/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-400 transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>

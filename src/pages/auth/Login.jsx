@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { BookOpen, Mail, Lock, AlertCircle, Sparkles, ArrowRight, Eye, EyeOff, Shield, Zap, Award } from 'lucide-react';
+import { LogoIcon } from '../../components/LogoIcon';
 
 const Login = () => {
   const { login, user } = useApp();
@@ -59,7 +60,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-900 via-cyan-600 to-slate-800 relative overflow-hidden">
         {/* Animated Background Pattern */}
         <div className="absolute inset-0 opacity-20" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
@@ -80,7 +81,7 @@ const Login = () => {
             </div>
             <h1 className="text-5xl font-bold mb-6 leading-tight">
               Start your learning<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-pink-200">journey today</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 to-sky-200">journey today</span>
             </h1>
             <p className="text-xl text-white/80 mb-10 max-w-md">
               Join thousands of learners and unlock your potential with our expert-led courses.
@@ -123,17 +124,17 @@ const Login = () => {
       {/* Right Side - Login Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
         {/* Background Elements */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-br from-pink-500/10 to-orange-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-cyan-500/10 to-sky-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-br from-sky-500/10 to-slate-500/10 rounded-full blur-3xl"></div>
 
         <div className="w-full max-w-md relative z-10">
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-8">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-2">
+              <LogoIcon className="h-12 w-auto" />
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold text-gray-900">LearnSphere</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">LearnSphere</span>
             </div>
           </div>
 
@@ -163,9 +164,9 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={() => quickLogin('admin@learnsphere.com', 'admin123')}
-                  className="p-3 bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 rounded-xl transition-all group"
+                  className="p-3 bg-gradient-to-br from-cyan-50 to-sky-100 hover:from-cyan-100 hover:to-sky-200 rounded-xl transition-all group"
                 >
-                  <div className="text-purple-600 font-semibold text-sm group-hover:scale-105 transition-transform">Admin</div>
+                  <div className="text-cyan-600 font-semibold text-sm group-hover:scale-105 transition-transform">Admin</div>
                 </button>
                 <button
                   type="button"
@@ -250,7 +251,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 py-4 px-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 py-4 px-6 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 font-semibold rounded-xl hover:shadow-lg hover:shadow-cyan-400/25 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-400 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

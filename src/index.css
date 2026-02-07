@@ -5,15 +5,19 @@
 @tailwind utilities;
 
 :root {
-  --gradient-start: #667eea;
-  --gradient-mid: #764ba2;
-  --gradient-end: #f093fb;
-  --neon-blue: #00d4ff;
-  --neon-purple: #b829dd;
-  --neon-pink: #ff2d92;
-  --neon-green: #39ff14;
+  --gradient-start: #0f172a;
+  --gradient-mid: #0ea5e9;
+  --gradient-end: #06b6d4;
+  --neon-blue: #00d9ff;
+  --neon-purple: #0ea5e9;
+  --neon-pink: #06b6d4;
+  --neon-green: #0284c7;
   --glass-bg: rgba(255, 255, 255, 0.1);
   --glass-border: rgba(255, 255, 255, 0.2);
+  --rose-deep: #0f172a;
+  --rose-primary: #0ea5e9;
+  --rose-light: #e0f2fe;
+  --rose-accent: #06b6d4;
 }
 
 * {
@@ -39,11 +43,11 @@ code {
 
 /* ==================== PREMIUM GRADIENTS ==================== */
 .gradient-premium {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #0ea5e9 50%, #06b6d4 100%);
 }
 
 .gradient-ocean {
-  background: linear-gradient(135deg, #00c6fb 0%, #005bea 100%);
+  background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%);
 }
 
 .gradient-sunset {
@@ -188,7 +192,7 @@ code {
 
 /* ==================== ANIMATED BACKGROUNDS ==================== */
 .bg-animated-gradient {
-  background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #00d4ff);
+  background: linear-gradient(-45deg, #ec4899, #d946ef, #a855f7, #f472b6);
   background-size: 400% 400%;
   animation: gradientShift 15s ease infinite;
 }
