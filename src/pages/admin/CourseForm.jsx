@@ -99,6 +99,7 @@ const CourseForm = () => {
   const handleSaveCourse = () => {
     updateCourse(parseInt(courseId), formData);
     alert('Course updated successfully!');
+    navigate('/admin/courses');
   };
 
   const handleAddLesson = () => {
