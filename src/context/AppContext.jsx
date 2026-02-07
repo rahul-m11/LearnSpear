@@ -11,41 +11,69 @@ export const useApp = () => {
 };
 
 // Mock initial data
+
+// Curated high-quality avatar collection
+export const AVATAR_OPTIONS = [
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Nolan&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Sophia&backgroundColor=ffd5dc',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Liam&backgroundColor=d1d4f9',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Chloe&backgroundColor=ffdfbf',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Oliver&backgroundColor=c0aede',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Amaya&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Riley&backgroundColor=ffd5dc',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Jasper&backgroundColor=d1d4f9',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Luna&backgroundColor=ffdfbf',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Felix&backgroundColor=c0aede',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Mia&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Leo&backgroundColor=ffd5dc',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Zara&backgroundColor=d1d4f9',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Kai&backgroundColor=ffdfbf',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Iris&backgroundColor=c0aede',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Eden&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Rowan&backgroundColor=ffd5dc',
+  'https://api.dicebear.com/9.x/notionists/svg?seed=Aiden&backgroundColor=d1d4f9',
+];
+
+const getRandomAvatar = () => AVATAR_OPTIONS[Math.floor(Math.random() * AVATAR_OPTIONS.length)];
+
 const initialUsers = [
   {
     id: 1,
     name: 'Admin User',
-    email: 'admin@learnsphere.com',
-    password: 'admin123',
+    email: 'admin@admin.in',
+    password: 'Learn@123',
     role: 'admin',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin',
+    avatar: AVATAR_OPTIONS[0],
     points: 0,
   },
   {
     id: 2,
     name: 'John Instructor',
-    email: 'instructor@learnsphere.com',
-    password: 'instructor123',
+    email: 'john@ac.in',
+    password: 'Learn@123',
     role: 'instructor',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
+    avatar: AVATAR_OPTIONS[3],
     points: 0,
   },
   {
     id: 3,
     name: 'Jane Learner',
-    email: 'learner@learnsphere.com',
-    password: 'learner123',
+    email: 'jane@gmail.com',
+    password: 'Learn@123',
     role: 'learner',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jane',
+    avatar: AVATAR_OPTIONS[2],
     points: 65,
   },
   // Additional users for demo enrollments
-  { id: 4, name: 'Mike Student', email: 'mike@example.com', password: 'pass', role: 'learner', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mike', points: 30 },
-  { id: 5, name: 'Sarah Student', email: 'sarah@example.com', password: 'pass', role: 'learner', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah', points: 25 },
-  { id: 6, name: 'Tom Student', email: 'tom@example.com', password: 'pass', role: 'learner', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Tom', points: 45 },
-  { id: 7, name: 'Lisa Student', email: 'lisa@example.com', password: 'pass', role: 'learner', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Lisa', points: 20 },
-  { id: 8, name: 'David Student', email: 'david@example.com', password: 'pass', role: 'learner', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=David', points: 15 },
-  { id: 9, name: 'Emma Student', email: 'emma@example.com', password: 'pass', role: 'learner', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emma', points: 10 },
+  { id: 4, name: 'Mike Student', email: 'mike@gmail.com', password: 'Learn@123', role: 'learner', avatar: AVATAR_OPTIONS[5], points: 30 },
+  { id: 5, name: 'Sarah Student', email: 'sarah@gmail.com', password: 'Learn@123', role: 'learner', avatar: AVATAR_OPTIONS[4], points: 25 },
+  { id: 6, name: 'Tom Student', email: 'tom@gmail.com', password: 'Learn@123', role: 'learner', avatar: AVATAR_OPTIONS[9], points: 45 },
+  { id: 7, name: 'Lisa Student', email: 'lisa@gmail.com', password: 'Learn@123', role: 'learner', avatar: AVATAR_OPTIONS[10], points: 20 },
+  { id: 8, name: 'David Student', email: 'david@gmail.com', password: 'Learn@123', role: 'learner', avatar: AVATAR_OPTIONS[13], points: 15 },
+  { id: 9, name: 'Emma Student', email: 'emma@gmail.com', password: 'Learn@123', role: 'learner', avatar: AVATAR_OPTIONS[12], points: 10 },
+  { id: 10, name: 'Arjun Sharma', email: 'arjun@gmail.com', password: 'Learn@123', role: 'learner', avatar: AVATAR_OPTIONS[6], points: 120 },
+  { id: 11, name: 'Priya Patel', email: 'priya@gmail.com', password: 'Learn@123', role: 'learner', avatar: AVATAR_OPTIONS[7], points: 95 },
+  { id: 12, name: 'Ravi Kumar', email: 'ravi@gmail.com', password: 'Learn@123', role: 'learner', avatar: AVATAR_OPTIONS[8], points: 80 },
 ];
 
 const initialCourses = [
@@ -562,11 +590,49 @@ export const AppProvider = ({ children }) => {
   const [likedCourses, setLikedCourses] = useState([]);
   const [bookmarkedCourses, setBookmarkedCourses] = useState([]);
 
+  const getLocalDateKey = (date = new Date()) => {
+    // YYYY-MM-DD in user's local timezone
+    return date.toLocaleDateString('en-CA');
+  };
+
+  const getActivityStorageKey = (userId) => `activityCounts:${userId}`;
+
+  const readActivityCounts = (userId) => {
+    try {
+      const raw = localStorage.getItem(getActivityStorageKey(userId));
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const writeActivityCounts = (userId, counts) => {
+    localStorage.setItem(getActivityStorageKey(userId), JSON.stringify(counts));
+  };
+
+  const touchDailyActivity = (userId, dateKey = getLocalDateKey()) => {
+    if (!userId) return;
+    const counts = readActivityCounts(userId);
+    counts[dateKey] = Math.max(counts[dateKey] || 0, 1);
+    writeActivityCounts(userId, counts);
+  };
+
+  const incrementDailyActivity = (userId, amount = 1, dateKey = getLocalDateKey()) => {
+    if (!userId) return;
+    const counts = readActivityCounts(userId);
+    counts[dateKey] = (counts[dateKey] || 0) + amount;
+    writeActivityCounts(userId, counts);
+  };
+
   // Load user from localStorage
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const parsed = JSON.parse(savedUser);
+      setUser(parsed);
+      // Mark today as active when the user is present (return visit / persisted session)
+      touchDailyActivity(parsed?.id);
     }
   }, []);
 
@@ -577,8 +643,11 @@ export const AppProvider = ({ children }) => {
     );
     if (foundUser) {
       const { password, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+      const nowIso = new Date().toISOString();
+      const nextUser = { ...userWithoutPassword, lastLoginAt: nowIso };
+      setUser(nextUser);
+      localStorage.setItem('user', JSON.stringify(nextUser));
+      touchDailyActivity(nextUser.id);
       return true;
     }
     return false;
@@ -588,13 +657,16 @@ export const AppProvider = ({ children }) => {
     const newUser = {
       ...userData,
       id: users.length + 1,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.name}`,
+      avatar: getRandomAvatar(),
       points: 0,
     };
     setUsers([...users, newUser]);
     const { password, ...userWithoutPassword } = newUser;
-    setUser(userWithoutPassword);
-    localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+    const nowIso = new Date().toISOString();
+    const nextUser = { ...userWithoutPassword, lastLoginAt: nowIso };
+    setUser(nextUser);
+    localStorage.setItem('user', JSON.stringify(nextUser));
+    touchDailyActivity(nextUser.id);
     return true;
   };
 
@@ -736,6 +808,19 @@ export const AppProvider = ({ children }) => {
     );
   };
 
+  const addPoints = (userId, points) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, points: (u.points || 0) + points } : u));
+    // Also update session user if it's the current user
+    setUser(prev => {
+      if (prev && prev.id === userId) {
+        const updated = { ...prev, points: (prev.points || 0) + points };
+        localStorage.setItem('user', JSON.stringify(updated));
+        return updated;
+      }
+      return prev;
+    });
+  };
+
   const completeLesson = (userId, courseId, lessonId) => {
     const enrollment = getEnrollment(userId, courseId);
     if (!enrollment) return;
@@ -744,7 +829,8 @@ export const AppProvider = ({ children }) => {
     if (!course) return;
 
     const completedLessons = [...enrollment.completedLessons];
-    if (!completedLessons.includes(lessonId)) {
+    const alreadyDone = completedLessons.includes(lessonId);
+    if (!alreadyDone) {
       completedLessons.push(lessonId);
     }
 
@@ -764,14 +850,36 @@ export const AppProvider = ({ children }) => {
       status,
       startDate: enrollment.startDate || new Date().toISOString(),
     });
+
+    // Award 10 XP per new lesson completed
+    if (!alreadyDone) {
+      addPoints(userId, 10);
+    }
+
+    // Award 50 XP bonus when course is fully completed
+    if (progress === 100 && enrollment.progress < 100) {
+      addPoints(userId, 50);
+    }
+
+    incrementDailyActivity(userId, 1);
   };
 
   const completeCourse = (userId, courseId) => {
+    const enrollment = getEnrollment(userId, courseId);
+    const wasAlreadyComplete = enrollment?.progress === 100;
+
     updateEnrollment(userId, courseId, {
       completedDate: new Date().toISOString(),
       status: 'completed',
       progress: 100,
     });
+
+    // Award 50 XP if not already completed
+    if (!wasAlreadyComplete) {
+      addPoints(userId, 50);
+    }
+
+    incrementDailyActivity(userId, 1);
   };
 
   // Quiz attempt functions
@@ -784,6 +892,14 @@ export const AppProvider = ({ children }) => {
       date: new Date().toISOString(),
     });
     setQuizAttempts({ ...quizAttempts, [key]: attempts });
+
+    // Award XP based on quiz score (first attempt only)
+    if (attemptNumber === 1) {
+      const xp = score >= 90 ? 25 : score >= 70 ? 15 : score >= 50 ? 10 : 5;
+      addPoints(userId, xp);
+    }
+
+    incrementDailyActivity(userId, 1);
   };
 
   const getQuizAttempts = (userId, quizId) => {
@@ -791,15 +907,12 @@ export const AppProvider = ({ children }) => {
     return quizAttempts[key] || [];
   };
 
-  const addPoints = (userId, points) => {
-    setUsers(
-      users.map((u) =>
-        u.id === userId ? { ...u, points: (u.points || 0) + points } : u
-      )
-    );
-    if (user && user.id === userId) {
-      setUser({ ...user, points: (user.points || 0) + points });
-    }
+  const updateUser = (updates) => {
+    if (!user) return;
+    const updatedUser = { ...user, ...updates };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    setUsers(users.map((u) => (u.id === user.id ? { ...u, ...updates } : u)));
   };
 
   const getUserBadge = (points) => {
@@ -913,6 +1026,7 @@ export const AppProvider = ({ children }) => {
     recordQuizAttempt,
     getQuizAttempts,
     addPoints,
+    updateUser,
     getUserBadge,
     addReview,
     getCourseReviews,

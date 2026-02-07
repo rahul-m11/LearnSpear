@@ -15,8 +15,18 @@ import {
   Trophy,
   Target,
   ArrowRight,
+  Shield,
+  Users,
 } from 'lucide-react';
 import { LogoIcon } from '../../components/LogoIcon';
+
+const DEFAULT_PASSWORD = 'Learn@123';
+
+const ROLE_OPTIONS = [
+  { value: 'learner', label: 'Learner', icon: GraduationCap, domain: '@gmail.com', color: 'from-emerald-500 to-green-500', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' },
+  { value: 'instructor', label: 'Instructor', icon: Users, domain: '@ac.in', color: 'from-blue-500 to-indigo-500', bg: 'bg-blue-50 border-blue-200', text: 'text-blue-700' },
+  { value: 'admin', label: 'Admin', icon: Shield, domain: '@admin.in', color: 'from-purple-500 to-violet-500', bg: 'bg-purple-50 border-purple-200', text: 'text-purple-700' },
+];
 
 const Register = () => {
   const { register, user } = useApp();
@@ -24,8 +34,8 @@ const Register = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: '',
-    confirmPassword: '',
+    password: DEFAULT_PASSWORD,
+    confirmPassword: DEFAULT_PASSWORD,
     role: 'learner',
   });
   const [error, setError] = useState('');
@@ -37,7 +47,11 @@ const Register = () => {
   // Redirect if already logged in
   React.useEffect(() => {
     if (user) {
-      navigate('/');
+      if (user.role === 'admin' || user.role === 'instructor') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/');
+      }
     }
   }, [user, navigate]);
 
@@ -64,6 +78,13 @@ const Register = () => {
 
     if (!agreedToTerms) {
       setError('Please agree to the terms and conditions');
+      return;
+    }
+
+    // Validate email domain based on role
+    const selectedRole = ROLE_OPTIONS.find(r => r.value === formData.role);
+    if (selectedRole && !formData.email.toLowerCase().endsWith(selectedRole.domain)) {
+      setError(`For ${selectedRole.label} role, email must end with ${selectedRole.domain}`);
       return;
     }
 
@@ -114,7 +135,7 @@ const Register = () => {
         <div className="relative z-10">
           <Link to="/" className="flex items-center gap-3 text-white">
             <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-              <GraduationCap className="w-7 h-7" />
+              <LogoIcon className="h-8 w-8" />
             </div>
             <span className="text-2xl font-bold">LearnSphere</span>
           </Link>
@@ -176,7 +197,10 @@ const Register = () => {
             </Link>
           </div>
 
-          <div className="mb-8">
+          <div className="mb-8 text-center">
+            <div className="flex justify-center mb-4">
+              <img src="/logo.png" alt="LearnSphere" className="h-32 w-32 object-contain" />
+            </div>
             <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
             <p className="mt-2 text-gray-600">
               Already have an account?{' '}
@@ -194,6 +218,35 @@ const Register = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Role Selector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Register as</label>
+              <div className="grid grid-cols-3 gap-3">
+                {ROLE_OPTIONS.map((role) => {
+                  const Icon = role.icon;
+                  const isSelected = formData.role === role.value;
+                  return (
+                    <button
+                      key={role.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, role: role.value, email: '' })}
+                      className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all duration-200 ${
+                        isSelected
+                          ? `${role.bg} border-current ${role.text} shadow-sm`
+                          : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-xs font-semibold">{role.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs text-gray-400">
+                Email must end with <span className="font-medium text-gray-600">{ROLE_OPTIONS.find(r => r.value === formData.role)?.domain}</span>
+              </p>
+            </div>
+
             {/* Name Field */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -233,7 +286,7 @@ const Register = () => {
                   value={formData.email}
                   onChange={handleChange}
                   className="block w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 placeholder-gray-400"
-                  placeholder="you@example.com"
+                  placeholder={`name${ROLE_OPTIONS.find(r => r.value === formData.role)?.domain || '@gmail.com'}`}
                 />
               </div>
             </div>

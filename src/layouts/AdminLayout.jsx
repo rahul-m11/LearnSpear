@@ -1,7 +1,8 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { LayoutDashboard, BookOpen, BarChart3, LogOut, Home, TrendingUp, PieChart } from 'lucide-react';
+import { BarChart3, LogOut, Home, PieChart } from 'lucide-react';
+import { LogoIcon } from '../components/LogoIcon';
 
 const AdminLayout = () => {
   const { user, logout } = useApp();
@@ -26,7 +27,9 @@ const AdminLayout = () => {
         <div className="px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center space-x-2 md:space-x-4 group min-w-0">
-              <LayoutDashboard className="w-6 md:w-8 h-6 md:h-8 text-primary-600 group-hover:animate-wiggle transition-transform flex-shrink-0" />
+              <div className="flex-shrink-0">
+                <LogoIcon className="h-8 w-8 md:h-10 md:w-10" />
+              </div>
               <div className="min-w-0">
                 <h1 className="text-lg md:text-2xl font-bold text-gray-900 truncate">LearnSphere</h1>
                 <p className="hidden sm:block text-xs md:text-sm text-gray-500">Admin Dashboard</p>

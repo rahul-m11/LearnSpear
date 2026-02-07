@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { BookOpen, Mail, Lock, AlertCircle, Sparkles, ArrowRight, Eye, EyeOff, Shield, Zap, Award } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Sparkles, ArrowRight, Eye, EyeOff, Shield, Zap, Award } from 'lucide-react';
 import { LogoIcon } from '../../components/LogoIcon';
 
 const Login = () => {
@@ -75,7 +75,7 @@ const Login = () => {
           <div className="mb-8">
             <div className="flex items-center space-x-3 mb-8">
               <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                <BookOpen className="w-8 h-8 text-white" />
+                <LogoIcon className="h-9 w-9" />
               </div>
               <span className="text-3xl font-bold">LearnSphere</span>
             </div>
@@ -140,6 +140,9 @@ const Login = () => {
 
           <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-gray-200/50 p-8 border border-white/50 animate-fade-in-up">
             <div className="text-center mb-8">
+              <div className="flex justify-center mb-4">
+                <img src="/logo.png" alt="LearnSphere" className="h-32 w-32 object-contain" />
+              </div>
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
                 Welcome back
               </h2>
@@ -163,21 +166,21 @@ const Login = () => {
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onClick={() => quickLogin('admin@learnsphere.com', 'admin123')}
+                  onClick={() => quickLogin('admin@admin.in', 'Learn@123')}
                   className="p-3 bg-gradient-to-br from-cyan-50 to-sky-100 hover:from-cyan-100 hover:to-sky-200 rounded-xl transition-all group"
                 >
                   <div className="text-cyan-600 font-semibold text-sm group-hover:scale-105 transition-transform">Admin</div>
                 </button>
                 <button
                   type="button"
-                  onClick={() => quickLogin('instructor@learnsphere.com', 'instructor123')}
+                  onClick={() => quickLogin('john@ac.in', 'Learn@123')}
                   className="p-3 bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-xl transition-all group"
                 >
                   <div className="text-blue-600 font-semibold text-sm group-hover:scale-105 transition-transform">Instructor</div>
                 </button>
                 <button
                   type="button"
-                  onClick={() => quickLogin('learner@learnsphere.com', 'learner123')}
+                  onClick={() => quickLogin('jane@gmail.com', 'Learn@123')}
                   className="p-3 bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 rounded-xl transition-all group"
                 >
                   <div className="text-green-600 font-semibold text-sm group-hover:scale-105 transition-transform">Learner</div>

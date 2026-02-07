@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useApp, BADGE_LEVELS } from '../../context/AppContext';
+import { useApp, BADGE_LEVELS, AVATAR_OPTIONS } from '../../context/AppContext';
 import {
   User,
   Mail,
@@ -70,28 +70,190 @@ const BadgeIcon = ({ iconName, className = "w-6 h-6" }) => {
 };
 
 const Profile = () => {
-  const { user, courses, enrollments, getUserBadge, quizzes } = useApp();
+  const { user, users, courses, enrollments, getUserBadge, quizzes, updateUser, logout } = useApp();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedCertificate, setSelectedCertificate] = useState(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // Activity data for heatmap (last 365 days)
-  const generateActivityData = () => {
+  // Edit Profile modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', email: '', bio: '', location: '' });
+  const [selectedAvatar, setSelectedAvatar] = useState('');
+  const [editSaved, setEditSaved] = useState(false);
+
+  // Settings modal
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    emailNotifications: true,
+    courseUpdates: true,
+    achievementAlerts: true,
+    weeklyDigest: false,
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [settingsSaved, setSettingsSaved] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
+  const clamp01 = (value) => Math.min(1, Math.max(0, value));
+  const prefersReducedMotion = () =>
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const setTiltFromPoint = (el, clientX, clientY) => {
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const x = clamp01((clientX - rect.left) / Math.max(rect.width, 1));
+    const y = clamp01((clientY - rect.top) / Math.max(rect.height, 1));
+
+    const max = parseFloat(el.dataset.tiltMax || '10');
+    const rx = (y - 0.5) * -2 * max;
+    const ry = (x - 0.5) * 2 * max;
+
+    el.style.setProperty('--rx', `${rx.toFixed(2)}deg`);
+    el.style.setProperty('--ry', `${ry.toFixed(2)}deg`);
+    el.style.setProperty('--px', `${(x * 100).toFixed(1)}%`);
+    el.style.setProperty('--py', `${(y * 100).toFixed(1)}%`);
+    el.style.setProperty('--tz', el.dataset.tiltTz || '10px');
+    el.style.setProperty('--s', el.dataset.tiltScale || '1.02');
+  };
+
+  const resetTilt = (el) => {
+    if (!el) return;
+    el.style.setProperty('--rx', '0deg');
+    el.style.setProperty('--ry', '0deg');
+    el.style.setProperty('--px', '50%');
+    el.style.setProperty('--py', '50%');
+    el.style.setProperty('--tz', '0px');
+    el.style.setProperty('--s', '1');
+  };
+
+  const onTiltPointerMove = (e) => {
+    if (prefersReducedMotion()) return;
+    const el = e.currentTarget;
+    const dragging = el?.dataset?.tiltDragging === '1';
+    if (e.pointerType !== 'mouse' && !dragging) return;
+    setTiltFromPoint(el, e.clientX, e.clientY);
+  };
+
+  const onTiltPointerDown = (e) => {
+    if (prefersReducedMotion()) return;
+    const el = e.currentTarget;
+    if (!el) return;
+
+    el.dataset.tiltDragging = '1';
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+    setTiltFromPoint(el, e.clientX, e.clientY);
+  };
+
+  const onTiltPointerUp = (e) => {
+    const el = e.currentTarget;
+    if (!el) return;
+    delete el.dataset.tiltDragging;
+    resetTilt(el);
+  };
+
+  const heatmapScrollRef = useRef(null);
+  const [heatmapScrollState, setHeatmapScrollState] = useState({
+    scrollLeft: 0,
+    scrollWidth: 0,
+    clientWidth: 0,
+  });
+
+  useEffect(() => {
+    const el = heatmapScrollRef.current;
+    if (!el) return;
+
+    const update = () => {
+      setHeatmapScrollState({
+        scrollLeft: el.scrollLeft,
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+      });
+    };
+
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+
+    return () => {
+      el.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [activeTab]);
+
+  const getLocalDateKey = (date = new Date()) => date.toLocaleDateString('en-CA');
+
+  const activityData = useMemo(() => {
     const data = [];
     const today = new Date();
+
+    let counts = {};
+    try {
+      counts = JSON.parse(localStorage.getItem(`activityCounts:${user?.id}`) || '{}') || {};
+    } catch {
+      counts = {};
+    }
+
     for (let i = 364; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      // Simulate activity based on random + enrollments
-      const activity = Math.random() > 0.6 ? Math.floor(Math.random() * 5) + 1 : 0;
-      data.push({ date: date.toISOString().split('T')[0], count: activity });
+      const key = getLocalDateKey(date);
+      const count = typeof counts[key] === 'number' ? counts[key] : 0;
+      data.push({ date: key, count });
     }
-    return data;
-  };
 
-  const activityData = useMemo(() => generateActivityData(), []);
+    return data;
+  }, [user?.id]);
+
+  const heatmapMonths = useMemo(() => {
+    if (!activityData?.length) return [];
+
+    const countByDate = new Map(activityData.map((d) => [d.date, d.count]));
+
+    // Get the range of months from activityData
+    const firstDate = activityData[0].date; // YYYY-MM-DD
+    const lastDate = activityData[activityData.length - 1].date;
+    const [fy, fm] = firstDate.split('-').map(Number);
+    const [ly, lm] = lastDate.split('-').map(Number);
+
+    const months = [];
+    let year = fy;
+    let month = fm;
+
+    while (year < ly || (year === ly && month <= lm)) {
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const firstDayOfWeek = new Date(year, month - 1, 1).getDay(); // 0=Sun
+      const days = [];
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const count = countByDate.has(key) ? countByDate.get(key) : null; // null = not in range
+        days.push({ date: key, day: d, count, dayOfWeek: new Date(year, month - 1, d).getDay() });
+      }
+
+      months.push({
+        year,
+        month: month - 1, // 0-indexed
+        daysInMonth,
+        firstDayOfWeek,
+        days,
+        label: new Date(year, month - 1).toLocaleString('en-US', { month: 'short' }),
+      });
+
+      month++;
+      if (month > 12) { month = 1; year++; }
+    }
+    return months;
+  }, [activityData]);
 
   // Get user's enrollments (for learners) - needs to be before conditional return for useMemo
   const userEnrollments = user ? enrollments.filter((e) => e.userId === user.id) : [];
@@ -117,11 +279,12 @@ const Profile = () => {
       .slice(0, 6);
   }, [enrolledCourses]);
 
+  useEffect(() => {
+    if (!user) navigate('/login', { replace: true });
+  }, [user, navigate]);
+
   // Early return AFTER all hooks
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
+  if (!user) return null;
 
   // Role checks
   const isAdmin = user.role === 'admin';
@@ -192,6 +355,9 @@ const Profile = () => {
     ? Math.round(userEnrollments.reduce((acc, e) => acc + (e.progress || 0), 0) / userEnrollments.length)
     : 0;
 
+  const activeDaysLastYear = activityData.filter((d) => d.count > 0).length;
+  const activeDaysLast30 = activityData.slice(-30).filter((d) => d.count > 0).length;
+
   // Achievements
   const achievements = [
     {
@@ -209,6 +375,7 @@ const Profile = () => {
       description: 'Complete your first course',
       icon: CheckCircle,
       unlocked: completedCourses >= 1,
+      badgeImage: '/badges/course-completion.png',
       color: 'text-green-500',
       bg: 'bg-green-100',
     },
@@ -266,6 +433,56 @@ const Profile = () => {
       color: 'text-amber-500',
       bg: 'bg-amber-100',
     },
+    {
+      id: 9,
+      name: 'Certified',
+      description: 'Complete 3 courses',
+      icon: Award,
+      unlocked: completedCourses >= 3,
+      badgeImage: '/badges/certified.png',
+      color: 'text-cyan-600',
+      bg: 'bg-cyan-100',
+    },
+    {
+      id: 10,
+      name: 'Outstanding Achievement',
+      description: 'Be active 15 days (30d)',
+      icon: Trophy,
+      unlocked: activeDaysLast30 >= 15,
+      badgeImage: '/badges/outstanding-achievement.png',
+      color: 'text-primary-700',
+      bg: 'bg-primary-100',
+    },
+    {
+      id: 11,
+      name: 'Top Performer',
+      description: 'Reach 80 XP',
+      icon: TrendingUp,
+      unlocked: (user.points || 0) >= 80,
+      badgeImage: '/badges/top-performer.png',
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-100',
+    },
+    {
+      id: 12,
+      name: 'Excellence in Learning',
+      description: 'Reach 100 XP',
+      icon: Sparkles,
+      unlocked: (user.points || 0) >= 100,
+      badgeImage: '/badges/excellence-in-learning.png',
+      color: 'text-fuchsia-600',
+      bg: 'bg-fuchsia-100',
+    },
+    {
+      id: 13,
+      name: 'Learning Champion',
+      description: 'Be active 20 days (30d)',
+      icon: Flame,
+      unlocked: activeDaysLast30 >= 20,
+      badgeImage: '/badges/learning-champion.png',
+      color: 'text-orange-600',
+      bg: 'bg-orange-100',
+    },
   ];
 
   const unlockedAchievements = achievements.filter((a) => a.unlocked).length;
@@ -313,11 +530,11 @@ const Profile = () => {
   // Get activity level color
   const getActivityColor = (count) => {
     if (count === 0) return 'bg-gray-100';
-    if (count === 1) return 'bg-green-200';
-    if (count === 2) return 'bg-green-300';
-    if (count === 3) return 'bg-green-400';
-    if (count === 4) return 'bg-green-500';
-    return 'bg-green-600';
+    if (count === 1) return 'bg-primary-200';
+    if (count === 2) return 'bg-primary-300';
+    if (count === 3) return 'bg-primary-400';
+    if (count === 4) return 'bg-primary-500';
+    return 'bg-primary-600';
   };
 
   // Weekly activity summary
@@ -383,7 +600,20 @@ const Profile = () => {
                 </div>
               )}
               {/* Edit Button */}
-              <button className="absolute top-2 right-2 p-2 bg-black/30 backdrop-blur-sm rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-black/50">
+              <button
+                onClick={() => {
+                  setEditForm({
+                    name: user.name || '',
+                    email: user.email || '',
+                    bio: user.bio || '',
+                    location: user.location || 'San Francisco, CA',
+                  });
+                  setSelectedAvatar(user.avatar || '');
+                  setEditSaved(false);
+                  setShowEditModal(true);
+                }}
+                className="absolute top-2 right-2 p-2 bg-black/30 backdrop-blur-sm rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-black/50"
+              >
                 <Camera className="w-4 h-4 text-white" />
               </button>
             </div>
@@ -413,7 +643,7 @@ const Profile = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4" />
-                  <span>San Francisco, CA</span>
+                  <span>{user.location || 'San Francisco, CA'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
@@ -523,10 +753,33 @@ const Profile = () => {
 
             {/* Action Buttons */}
             <div className="flex items-center gap-3">
-              <button className="p-3 bg-white/10 backdrop-blur-sm rounded-xl hover:bg-white/20 transition-all border border-white/10">
+              <button
+                onClick={() => {
+                  setEditForm({
+                    name: user.name || '',
+                    email: user.email || '',
+                    bio: user.bio || '',
+                    location: user.location || 'San Francisco, CA',
+                  });
+                  setSelectedAvatar(user.avatar || '');
+                  setEditSaved(false);
+                  setShowEditModal(true);
+                }}
+                title="Edit Profile"
+                className="p-3 bg-white/10 backdrop-blur-sm rounded-xl hover:bg-white/20 transition-all border border-white/10"
+              >
                 <Edit3 className="w-5 h-5 text-white" />
               </button>
-              <button className="p-3 bg-white/10 backdrop-blur-sm rounded-xl hover:bg-white/20 transition-all border border-white/10">
+              <button
+                onClick={() => {
+                  setSettingsSaved(false);
+                  setPasswordError('');
+                  setSettingsForm((prev) => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+                  setShowSettingsModal(true);
+                }}
+                title="Settings"
+                className="p-3 bg-white/10 backdrop-blur-sm rounded-xl hover:bg-white/20 transition-all border border-white/10"
+              >
                 <Settings className="w-5 h-5 text-white" />
               </button>
             </div>
@@ -804,38 +1057,69 @@ const Profile = () => {
                   </div>
 
                   {/* Activity Heatmap */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Activity className="w-5 h-5 text-green-500" />
+                  <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-primary-600" />
                       Learning Activity
+                      <span className="text-sm font-normal text-gray-400 ml-auto">
+                        {new Date(new Date().setDate(new Date().getDate() - 364)).getFullYear() === new Date().getFullYear()
+                          ? new Date().getFullYear()
+                          : `${new Date(new Date().setDate(new Date().getDate() - 364)).getFullYear()} – ${new Date().getFullYear()}`
+                        }
+                      </span>
                     </h3>
-                    <div className="text-sm text-gray-600 mb-3">
-                      {activityData.filter((d) => d.count > 0).length} active days in the last year
+                    <div className="text-sm text-gray-600 mt-3">
+                      {activeDaysLastYear} active days in the last 365 days
                     </div>
-                    <div className="overflow-x-auto pb-2">
-                      <div className="flex gap-1 min-w-max">
-                        {/* Group by weeks */}
-                        {Array.from({ length: 52 }, (_, weekIndex) => (
-                          <div key={weekIndex} className="flex flex-col gap-1">
-                            {Array.from({ length: 7 }, (_, dayIndex) => {
-                              const dataIndex = weekIndex * 7 + dayIndex;
-                              const data = activityData[dataIndex];
-                              if (!data) return null;
-                              return (
+
+                    <div ref={heatmapScrollRef} className="overflow-x-auto mt-4 pb-2">
+                      <div className="flex gap-3 min-w-max">
+                        {heatmapMonths.map((mo, moIdx) => (
+                          <div key={`${mo.year}-${mo.month}`} className="flex-shrink-0">
+                            {/* Month + Year label */}
+                            <div className="text-xs text-gray-500 mb-1 text-center font-medium">
+                              {mo.label}{(moIdx === 0 || heatmapMonths[moIdx - 1]?.year !== mo.year) ? ` '${String(mo.year).slice(2)}` : ''}
+                            </div>
+                            {/* 7-column calendar grid */}
+                            <div className="grid grid-cols-7 gap-[3px]" style={{ width: '87px' }}>
+                              {/* Empty cells for offset */}
+                              {Array.from({ length: mo.firstDayOfWeek }).map((_, i) => (
+                                <div key={`empty-${i}`} className="w-3 h-3" />
+                              ))}
+                              {/* Day cells */}
+                              {mo.days.map((day) => (
                                 <div
-                                  key={dayIndex}
-                                  className={`w-3 h-3 rounded-sm ${getActivityColor(
-                                    data.count
-                                  )} hover:ring-2 hover:ring-primary-300 cursor-pointer transition-all`}
-                                  title={`${data.date}: ${data.count} activities`}
+                                  key={day.date}
+                                  className={`w-3 h-3 rounded-sm cursor-pointer transition-colors ${
+                                    day.count === null
+                                      ? 'bg-gray-100'
+                                      : getActivityColor(day.count || 0)
+                                  }`}
+                                  title={`${day.date}: ${day.count ?? 0} activities`}
                                 />
-                              );
-                            })}
+                              ))}
+                            </div>
                           </div>
                         ))}
                       </div>
                     </div>
-                    <div className="flex items-center justify-end gap-2 mt-3 text-xs text-gray-500">
+
+                    {heatmapScrollState.scrollWidth > heatmapScrollState.clientWidth && (
+                      <div className="mt-3 h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gray-700 rounded-full"
+                          style={(() => {
+                            const { scrollLeft, scrollWidth, clientWidth } = heatmapScrollState;
+                            const widthPct = (clientWidth / scrollWidth) * 100;
+                            const maxScroll = Math.max(scrollWidth - clientWidth, 1);
+                            const leftPct = (scrollLeft / maxScroll) * (100 - widthPct);
+                            return { width: `${widthPct}%`, marginLeft: `${leftPct}%` };
+                          })()}
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-end gap-2 mt-4 text-xs text-gray-500">
                       <span>Less</span>
                       <div className="flex gap-1">
                         {[0, 1, 2, 3, 4, 5].map((level) => (
@@ -878,6 +1162,161 @@ const Profile = () => {
                       </p>
                     )}
                   </div>
+
+                  {/* Continue Learning */}
+                  {enrolledCourses.filter(c => c?.enrollment?.status === 'in-progress').length > 0 && (
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                      <h3 className="text-xl font-bold text-gray-900 mb-5 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                          <Play className="w-5 h-5 text-indigo-600" />
+                        </div>
+                        Continue Learning
+                      </h3>
+                      <div className="space-y-4">
+                        {enrolledCourses
+                          .filter(c => c?.enrollment?.status === 'in-progress')
+                          .sort((a, b) => (b.enrollment?.progress || 0) - (a.enrollment?.progress || 0))
+                          .slice(0, 3)
+                          .map(course => {
+                            const progress = course.enrollment?.progress || 0;
+                            const totalLessons = course.lessons?.length || 0;
+                            const doneLessons = course.enrollment?.completedLessons?.length || 0;
+                            return (
+                              <div key={course.id} className="group relative bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-all">
+                                <div className="flex items-start gap-4">
+                                  <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
+                                    <img src={course.image} alt={course.title} className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Play className="w-6 h-6 text-white fill-white" />
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-semibold text-gray-900 truncate">{course.title}</h4>
+                                    <p className="text-xs text-gray-500 mt-0.5">{doneLessons} of {totalLessons} lessons completed</p>
+                                    <div className="mt-2 flex items-center gap-3">
+                                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                        <div
+                                          className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-700"
+                                          style={{ width: `${progress}%` }}
+                                        />
+                                      </div>
+                                      <span className="text-xs font-bold text-indigo-600 whitespace-nowrap">{progress}%</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <Link
+                                  to={`/courses/${course.id}`}
+                                  className="mt-3 flex items-center justify-center gap-2 w-full py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-100 transition-colors"
+                                >
+                                  <Play className="w-4 h-4" /> Continue Course
+                                </Link>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Learning Milestones */}
+                  <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-5 flex items-center gap-3">
+                      <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                        <Target className="w-5 h-5 text-emerald-600" />
+                      </div>
+                      Learning Milestones
+                    </h3>
+                    <div className="relative">
+                      {/* Timeline line */}
+                      <div className="absolute left-5 top-3 bottom-3 w-0.5 bg-gray-200" />
+                      <div className="space-y-4">
+                        {[
+                          { label: 'First Enrollment', target: 1, current: userEnrollments.length, icon: BookOpen, color: 'blue' },
+                          { label: 'Complete 1 Course', target: 1, current: completedCourses, icon: CheckCircle, color: 'green' },
+                          { label: 'Earn 50 XP', target: 50, current: user.points || 0, icon: Zap, color: 'yellow' },
+                          { label: 'Complete 10 Lessons', target: 10, current: totalLessonsCompleted, icon: Flame, color: 'orange' },
+                          { label: 'Reach 100 XP', target: 100, current: user.points || 0, icon: Trophy, color: 'purple' },
+                          { label: 'Complete 3 Courses', target: 3, current: completedCourses, icon: Crown, color: 'amber' },
+                          { label: 'Earn 200 XP', target: 200, current: user.points || 0, icon: Sparkles, color: 'pink' },
+                        ].map((milestone, i) => {
+                          const done = milestone.current >= milestone.target;
+                          const pct = Math.min((milestone.current / milestone.target) * 100, 100);
+                          const Icon = milestone.icon;
+                          const colorMap = {
+                            blue: { bg: 'bg-blue-500', light: 'bg-blue-100', text: 'text-blue-600', ring: 'ring-blue-200' },
+                            green: { bg: 'bg-green-500', light: 'bg-green-100', text: 'text-green-600', ring: 'ring-green-200' },
+                            yellow: { bg: 'bg-yellow-500', light: 'bg-yellow-100', text: 'text-yellow-600', ring: 'ring-yellow-200' },
+                            orange: { bg: 'bg-orange-500', light: 'bg-orange-100', text: 'text-orange-600', ring: 'ring-orange-200' },
+                            purple: { bg: 'bg-purple-500', light: 'bg-purple-100', text: 'text-purple-600', ring: 'ring-purple-200' },
+                            amber: { bg: 'bg-amber-500', light: 'bg-amber-100', text: 'text-amber-600', ring: 'ring-amber-200' },
+                            pink: { bg: 'bg-pink-500', light: 'bg-pink-100', text: 'text-pink-600', ring: 'ring-pink-200' },
+                          };
+                          const c = colorMap[milestone.color];
+                          return (
+                            <div key={i} className="relative flex items-start gap-4 pl-1">
+                              <div className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ring-4 ring-white ${done ? c.bg : 'bg-gray-200'}`}>
+                                {done ? (
+                                  <Check className="w-4 h-4 text-white" />
+                                ) : (
+                                  <Icon className={`w-4 h-4 ${done ? 'text-white' : 'text-gray-400'}`} />
+                                )}
+                              </div>
+                              <div className="flex-1 pb-1">
+                                <div className="flex items-center justify-between">
+                                  <span className={`text-sm font-semibold ${done ? 'text-gray-900' : 'text-gray-600'}`}>{milestone.label}</span>
+                                  <span className={`text-xs font-bold ${done ? c.text : 'text-gray-400'}`}>
+                                    {done ? '✓ Done' : `${milestone.current}/${milestone.target}`}
+                                  </span>
+                                </div>
+                                {!done && (
+                                  <div className="mt-1.5 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                    <div className={`h-full ${c.bg} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recommended for You */}
+                  {courses.filter(c => !userEnrollments.some(e => e.courseId === c.id)).length > 0 && (
+                    <div className="bg-gradient-to-br from-primary-50 to-blue-50 rounded-2xl border border-primary-100 p-6">
+                      <h3 className="text-xl font-bold text-gray-900 mb-5 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
+                          <Rocket className="w-5 h-5 text-primary-600" />
+                        </div>
+                        Recommended for You
+                      </h3>
+                      <div className="space-y-3">
+                        {courses
+                          .filter(c => !userEnrollments.some(e => e.courseId === c.id))
+                          .slice(0, 3)
+                          .map(course => (
+                            <Link
+                              key={course.id}
+                              to={`/courses/${course.id}`}
+                              className="flex items-center gap-4 p-3 bg-white/80 rounded-xl border border-white hover:shadow-md hover:bg-white transition-all group"
+                            >
+                              <img src={course.image} alt={course.title} className="w-14 h-14 rounded-lg object-cover shadow-sm" />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-gray-900 truncate text-sm group-hover:text-primary-700 transition-colors">{course.title}</h4>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex items-center gap-1">
+                                    <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                                    <span className="text-xs text-gray-600">{course.rating || '4.5'}</span>
+                                  </div>
+                                  <span className="text-gray-300">·</span>
+                                  <span className="text-xs text-gray-500">{course.lessons?.length || 0} lessons</span>
+                                </div>
+                              </div>
+                              <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary-500 transition-colors" />
+                            </Link>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -979,32 +1418,42 @@ const Profile = () => {
                 </>
               ) : (
                 <>
-                  {/* Learner: Leaderboard Position */}
-                  <div className="bg-gradient-to-br from-cyan-400 via-sky-500 to-slate-600 rounded-xl shadow-lg p-6 text-white">
-                    <div className="flex items-center gap-3 mb-4">
-                      <Crown className="w-8 h-8" />
-                      <div>
-                        <h3 className="font-bold text-lg">Leaderboard</h3>
-                        <p className="text-white/80 text-sm">Your current ranking</p>
+                  {/* Learner: Leaderboard */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="bg-gradient-to-br from-cyan-400 via-sky-500 to-slate-600 p-5 text-white">
+                      <div className="flex items-center gap-3">
+                        <Crown className="w-7 h-7" />
+                        <div>
+                          <h3 className="font-bold text-lg">Leaderboard</h3>
+                          <p className="text-white/80 text-xs">Top learners by XP points</p>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-center py-4">
-                      <div className="text-5xl font-bold mb-1">#42</div>
-                      <div className="text-white/80 text-sm">out of 1,234 learners</div>
-                    </div>
-                    <div className="flex justify-between text-sm pt-4 border-t border-white/20">
-                      <div className="text-center">
-                        <div className="font-bold">{user.points || 0}</div>
-                        <div className="text-white/80 text-xs">Your Points</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="font-bold">2,450</div>
-                        <div className="text-white/80 text-xs">To Next Rank</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="font-bold">↑ 5</div>
-                        <div className="text-white/80 text-xs">This Week</div>
-                      </div>
+                    <div className="divide-y divide-gray-100">
+                      {(() => {
+                        const leaderboardUsers = [...(users || [])].filter(u => u.role === 'learner').sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 10);
+                        const myRank = leaderboardUsers.findIndex(u => u.id === user?.id);
+                        return leaderboardUsers.map((u, i) => {
+                          const isMe = u.id === user?.id;
+                          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null;
+                          return (
+                            <div key={u.id} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isMe ? 'bg-primary-50 border-l-4 border-l-primary-500' : 'hover:bg-gray-50'}`}>
+                              <div className={`w-7 text-center font-bold text-sm ${i < 3 ? 'text-lg' : 'text-gray-400'}`}>
+                                {medal || `#${i + 1}`}
+                              </div>
+                              <img src={u.avatar} alt={u.name} className="w-8 h-8 rounded-full bg-gray-100 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className={`text-sm font-medium truncate ${isMe ? 'text-primary-700' : 'text-gray-900'}`}>
+                                  {u.name}{isMe ? ' (You)' : ''}
+                                </div>
+                              </div>
+                              <div className={`text-sm font-bold ${i === 0 ? 'text-yellow-600' : i === 1 ? 'text-gray-500' : i === 2 ? 'text-amber-600' : 'text-gray-600'}`}>
+                                {u.points || 0} <span className="text-xs font-normal">XP</span>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   </div>
 
@@ -1130,7 +1579,18 @@ const Profile = () => {
                             className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-transparent rounded-lg hover:from-gray-100 transition-colors"
                           >
                             <div className={`p-2 ${achievement.bg} rounded-lg`}>
-                              <achievement.icon className={`w-5 h-5 ${achievement.color}`} />
+                              <div className="relative w-5 h-5">
+                                <achievement.icon className={`absolute inset-0 w-5 h-5 ${achievement.color}`} />
+                                {achievement.badgeImage && (
+                                  <img
+                                    src={achievement.badgeImage}
+                                    alt=""
+                                    className="absolute inset-0 w-5 h-5 object-contain"
+                                    loading="lazy"
+                                    onError={(e) => e.currentTarget.remove()}
+                                  />
+                                )}
+                              </div>
                             </div>
                             <div>
                               <div className="font-medium text-gray-900">{achievement.name}</div>
@@ -1197,6 +1657,111 @@ const Profile = () => {
                         </Link>
                       </div>
                     )}
+                  </div>
+
+                  {/* XP Breakdown */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Zap className="w-5 h-5 text-yellow-500" />
+                      How to Earn XP
+                    </h3>
+                    <div className="space-y-3">
+                      {[
+                        { action: 'Complete a lesson', xp: '+10', icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-50' },
+                        { action: 'Finish a course', xp: '+50', icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50' },
+                        { action: 'Quiz score ≥ 90%', xp: '+25', icon: Trophy, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+                        { action: 'Quiz score ≥ 70%', xp: '+15', icon: Target, color: 'text-orange-500', bg: 'bg-orange-50' },
+                        { action: 'Any quiz attempt', xp: '+5', icon: Brain, color: 'text-purple-500', bg: 'bg-purple-50' },
+                      ].map((item, i) => (
+                        <div key={i} className={`flex items-center justify-between p-3 ${item.bg} rounded-lg`}>
+                          <div className="flex items-center gap-3">
+                            <item.icon className={`w-4 h-4 ${item.color}`} />
+                            <span className="text-sm text-gray-700">{item.action}</span>
+                          </div>
+                          <span className="text-sm font-bold text-gray-900">{item.xp} XP</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Study Time Distribution */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-indigo-500" />
+                      Weekly Activity
+                    </h3>
+                    <div className="flex items-end justify-between gap-2 h-32 px-1">
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
+                        const today = new Date();
+                        const dayOfWeek = today.getDay(); // 0=Sun
+                        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                        const targetDate = new Date(today);
+                        targetDate.setDate(today.getDate() + mondayOffset + i);
+                        const key = targetDate.toLocaleDateString('en-CA');
+                        let count = 0;
+                        try {
+                          const counts = JSON.parse(localStorage.getItem(`activityCounts:${user?.id}`) || '{}');
+                          count = counts[key] || 0;
+                        } catch { count = 0; }
+                        const maxHeight = 100;
+                        const height = Math.max(count * 20, 4);
+                        const isToday = key === new Date().toLocaleDateString('en-CA');
+                        return (
+                          <div key={day} className="flex-1 flex flex-col items-center gap-1">
+                            <div className="w-full flex items-end justify-center" style={{ height: `${maxHeight}px` }}>
+                              <div
+                                className={`w-full max-w-[28px] rounded-t-md transition-all duration-500 ${isToday ? 'bg-gradient-to-t from-primary-600 to-primary-400' : count > 0 ? 'bg-gradient-to-t from-primary-400 to-primary-200' : 'bg-gray-100'}`}
+                                style={{ height: `${Math.min(height, maxHeight)}px` }}
+                                title={`${day}: ${count} activities`}
+                              />
+                            </div>
+                            <span className={`text-xs ${isToday ? 'font-bold text-primary-600' : 'text-gray-400'}`}>{day}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 text-white">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <Rocket className="w-5 h-5 text-cyan-400" />
+                      Quick Actions
+                    </h3>
+                    <div className="space-y-2">
+                      <Link
+                        to="/courses"
+                        className="flex items-center gap-3 w-full p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-left"
+                      >
+                        <Search className="w-5 h-5 text-cyan-300" />
+                        <span className="text-sm font-medium">Browse Courses</span>
+                        <ChevronRight className="w-4 h-4 ml-auto text-white/50" />
+                      </Link>
+                      <Link
+                        to="/my-courses"
+                        className="flex items-center gap-3 w-full p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-left"
+                      >
+                        <BookOpen className="w-5 h-5 text-green-300" />
+                        <span className="text-sm font-medium">My Courses</span>
+                        <ChevronRight className="w-4 h-4 ml-auto text-white/50" />
+                      </Link>
+                      <button
+                        onClick={() => setActiveTab('achievements')}
+                        className="flex items-center gap-3 w-full p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-left"
+                      >
+                        <Trophy className="w-5 h-5 text-yellow-300" />
+                        <span className="text-sm font-medium">View Achievements</span>
+                        <ChevronRight className="w-4 h-4 ml-auto text-white/50" />
+                      </button>
+                      <button
+                        onClick={() => setShowEditModal(true)}
+                        className="flex items-center gap-3 w-full p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-left"
+                      >
+                        <Edit3 className="w-5 h-5 text-pink-300" />
+                        <span className="text-sm font-medium">Edit Profile</span>
+                        <ChevronRight className="w-4 h-4 ml-auto text-white/50" />
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -1440,31 +2005,53 @@ const Profile = () => {
                 {achievements.map((achievement) => (
                   <div
                     key={achievement.id}
-                    className={`bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-6 text-center transition-all ${
+                    className={`tilt-card relative overflow-hidden bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-6 text-center transition-shadow ${
                       achievement.unlocked
                         ? 'hover:shadow-md'
                         : 'opacity-50 grayscale'
                     }`}
+                    data-tilt-max={achievement.unlocked ? '10' : '6'}
+                    data-tilt-tz={achievement.unlocked ? '12px' : '8px'}
+                    data-tilt-scale={achievement.unlocked ? '1.03' : '1.02'}
+                    onPointerMove={onTiltPointerMove}
+                    onPointerLeave={onTiltPointerUp}
+                    onPointerDown={onTiltPointerDown}
+                    onPointerUp={onTiltPointerUp}
+                    onPointerCancel={onTiltPointerUp}
                   >
-                    <div
-                      className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
-                        achievement.unlocked ? achievement.bg : 'bg-gray-100'
-                      }`}
-                    >
-                      <achievement.icon
-                        className={`w-8 h-8 ${
-                          achievement.unlocked ? achievement.color : 'text-gray-400'
+                    <div className="tilt-inner">
+                      <div
+                        className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
+                          achievement.unlocked ? achievement.bg : 'bg-gray-100'
                         }`}
-                      />
-                    </div>
-                    <h4 className="font-semibold text-gray-900 mb-1">{achievement.name}</h4>
-                    <p className="text-sm text-gray-500">{achievement.description}</p>
-                    {achievement.unlocked && (
-                      <div className="mt-3 inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                        <CheckCircle className="w-3 h-3" />
-                        Unlocked
+                      >
+                        <div className="relative w-10 h-10">
+                          <achievement.icon
+                            className={`absolute inset-0 w-10 h-10 ${
+                              achievement.unlocked ? achievement.color : 'text-gray-400'
+                            }`}
+                          />
+                          {achievement.badgeImage && (
+                            <img
+                              src={achievement.badgeImage}
+                              alt=""
+                              className={`absolute inset-0 w-10 h-10 object-contain ${achievement.unlocked ? '' : 'opacity-70'}`}
+                              loading="lazy"
+                              onError={(e) => e.currentTarget.remove()}
+                            />
+                          )}
+                        </div>
                       </div>
-                    )}
+                      <h4 className="font-semibold text-gray-900 mb-1">{achievement.name}</h4>
+                      <p className="text-sm text-gray-500">{achievement.description}</p>
+                      {achievement.unlocked && (
+                        <div className="mt-3 inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                          <CheckCircle className="w-3 h-3" />
+                          Unlocked
+                        </div>
+                      )}
+                    </div>
+                    <div className="tilt-shine" aria-hidden="true" />
                   </div>
                 ))}
               </div>
@@ -1630,7 +2217,7 @@ const Profile = () => {
 
             {/* Certificate Modal */}
             {selectedCertificate && (
-              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedCertificate(null)}>
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedCertificate(null)}>
                 <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
                   {/* Certificate Full View */}
                   <div className="relative bg-gradient-to-br from-cyan-500 via-blue-500 to-indigo-600 p-12 text-white rounded-t-3xl">
@@ -1787,6 +2374,312 @@ const Profile = () => {
           </div>
         )}
       </div>
+
+      {/* ===================== Edit Profile Modal ===================== */}
+      {showEditModal && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowEditModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl animate-scale-in max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-primary-600" />
+                Edit Profile
+              </h2>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 overflow-y-auto flex-1">
+              {/* Avatar picker */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Choose Your Avatar</label>
+                <div className="grid grid-cols-6 gap-3">
+                  {AVATAR_OPTIONS.map((url) => (
+                    <button
+                      key={url}
+                      type="button"
+                      onClick={() => setSelectedAvatar(url)}
+                      className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-all hover:scale-105 ${
+                        selectedAvatar === url
+                          ? 'border-primary-500 ring-2 ring-primary-300 shadow-lg scale-105'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <img
+                        src={url}
+                        alt="Avatar option"
+                        className="absolute inset-0 w-full h-full object-cover bg-gray-50 rounded-lg"
+                      />
+                      {selectedAvatar === url && (
+                        <div className="absolute inset-0 bg-primary-500/20 flex items-center justify-center">
+                          <CheckCircle className="w-5 h-5 text-primary-600 drop-shadow" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                <input
+                  type="text"
+                  value={editForm.location}
+                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                <textarea
+                  rows={3}
+                  value={editForm.bio}
+                  onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                  placeholder="Tell us about yourself..."
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all resize-none"
+                />
+              </div>
+
+              {editSaved && (
+                <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 px-4 py-2 rounded-xl">
+                  <CheckCircle className="w-4 h-4" />
+                  Profile updated successfully!
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const trimmedName = editForm.name.trim();
+                  if (!trimmedName) return;
+                  updateUser({
+                    name: trimmedName,
+                    email: editForm.email.trim() || user.email,
+                    bio: editForm.bio.trim(),
+                    location: editForm.location.trim(),
+                    avatar: selectedAvatar || user.avatar,
+                  });
+                  setEditSaved(true);
+                  setTimeout(() => setShowEditModal(false), 1200);
+                }}
+                className="px-5 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== Settings Modal ===================== */}
+      {showSettingsModal && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowSettingsModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl animate-scale-in max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white rounded-t-2xl z-10">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Settings className="w-5 h-5 text-primary-600" />
+                Settings
+              </h2>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Notification Preferences */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Notifications</h3>
+                <div className="space-y-3">
+                  {[
+                    { key: 'emailNotifications', label: 'Email Notifications', desc: 'Receive updates via email' },
+                    { key: 'courseUpdates', label: 'Course Updates', desc: 'New lessons & content changes' },
+                    { key: 'achievementAlerts', label: 'Achievement Alerts', desc: 'Badge unlocks & milestones' },
+                    { key: 'weeklyDigest', label: 'Weekly Digest', desc: 'Summary of your weekly progress' },
+                  ].map((item) => (
+                    <div key={item.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">{item.label}</div>
+                        <div className="text-xs text-gray-500">{item.desc}</div>
+                      </div>
+                      <button
+                        onClick={() =>
+                          setSettingsForm((prev) => ({ ...prev, [item.key]: !prev[item.key] }))
+                        }
+                        className={`relative w-11 h-6 rounded-full transition-colors ${
+                          settingsForm[item.key] ? 'bg-primary-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                            settingsForm[item.key] ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Change Password */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Change Password</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                    <input
+                      type="password"
+                      value={settingsForm.currentPassword}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, currentPassword: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+                      placeholder="Enter current password"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                    <input
+                      type="password"
+                      value={settingsForm.newPassword}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, newPassword: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+                      placeholder="Enter new password"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={settingsForm.confirmPassword}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, confirmPassword: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+                  {passwordError && (
+                    <div className="text-red-600 text-sm bg-red-50 px-4 py-2 rounded-xl">{passwordError}</div>
+                  )}
+                  <button
+                    onClick={() => {
+                      setPasswordError('');
+                      if (!settingsForm.currentPassword) {
+                        setPasswordError('Please enter your current password.');
+                        return;
+                      }
+                      if (settingsForm.newPassword.length < 6) {
+                        setPasswordError('New password must be at least 6 characters.');
+                        return;
+                      }
+                      if (settingsForm.newPassword !== settingsForm.confirmPassword) {
+                        setPasswordError('Passwords do not match.');
+                        return;
+                      }
+                      // In a real app this would call an API
+                      updateUser({ passwordChanged: true });
+                      setSettingsForm((prev) => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+                      setPasswordError('');
+                      setSettingsSaved(true);
+                      setTimeout(() => setSettingsSaved(false), 3000);
+                    }}
+                    className="w-full px-4 py-2.5 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors text-sm"
+                  >
+                    Update Password
+                  </button>
+                </div>
+              </div>
+
+              {/* Danger Zone */}
+              <div>
+                <h3 className="text-sm font-semibold text-red-600 uppercase tracking-wider mb-4">Danger Zone</h3>
+                <button
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to log out?')) {
+                      setShowSettingsModal(false);
+                      logout();
+                      navigate('/login', { replace: true });
+                    }
+                  }}
+                  className="w-full px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl font-medium hover:bg-red-100 transition-colors text-sm"
+                >
+                  Log Out
+                </button>
+              </div>
+
+              {settingsSaved && (
+                <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 px-4 py-2 rounded-xl">
+                  <CheckCircle className="w-4 h-4" />
+                  Settings saved successfully!
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl sticky bottom-0">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  setSettingsSaved(true);
+                  setTimeout(() => {
+                    setSettingsSaved(false);
+                    setShowSettingsModal(false);
+                  }, 1200);
+                }}
+                className="px-5 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors"
+              >
+                Save Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
