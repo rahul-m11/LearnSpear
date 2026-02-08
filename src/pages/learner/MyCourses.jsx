@@ -8,7 +8,6 @@ import {
   Clock,
   BookOpen,
   Award,
-  DollarSign,
   Lock,
   Sparkles,
   TrendingUp,
@@ -257,11 +256,8 @@ const MyCourses = () => {
 
     const enrollment = getEnrollment(user.id, course.id);
 
-    if (course.access === 'payment' && !enrollment) {
-      if (window.confirm(`This course costs $${course.price}. Purchase now?`)) {
-        enrollCourse(user.id, course.id);
-        navigate(`/courses/${course.id}`);
-      }
+    if (course.access === 'payment' && course.price > 0 && !enrollment) {
+      navigate(`/courses/${course.id}/payment`);
       return;
     }
 
@@ -281,7 +277,7 @@ const MyCourses = () => {
     const enrollment = user ? getEnrollment(user.id, course.id) : null;
 
     if (course.access === 'payment' && !enrollment) {
-      return `Enroll - $${course.price}`;
+      return `Enroll - ₹${course.price.toLocaleString('en-IN')}`;
     }
 
     if (!user) {
@@ -728,7 +724,7 @@ const MyCourses = () => {
                       <div className="flex items-center justify-between pt-4 border-t border-gray-100 gap-4">
                         {course.access === 'payment' && !enrollment ? (
                           <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-gray-900">${course.price}</span>
+                            <span className="text-2xl font-bold text-gray-900">₹{course.price.toLocaleString('en-IN')}</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 text-emerald-600">

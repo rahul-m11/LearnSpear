@@ -522,9 +522,63 @@ const Profile = () => {
   };
 
   // Download certificate function
-  const downloadCertificate = (certificate) => {
-    // In a real app, this would generate a PDF
-    alert(`Downloading certificate for "${certificate.courseTitle}"...\nThis would generate a PDF in production.`);
+  // Certificate image path (ensure this matches the uploaded file location)
+  const CERT_IMAGE = '/certificate-template.png';
+
+  // Download certificate as PNG with overlayed text
+  const downloadCertificate = async (certificate) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.src = CERT_IMAGE;
+    img.onload = () => {
+      // Set canvas size to match image
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      // Overlay text (coordinates are approximate, adjust as needed)
+      ctx.font = '48px serif';
+      ctx.fillStyle = '#5B2A6B';
+      ctx.textAlign = 'center';
+      // Student Name
+      ctx.fillText(user.name, canvas.width / 2, 370);
+      // Course Name
+      ctx.font = '36px serif';
+      ctx.fillStyle = '#3B2250';
+      ctx.fillText(certificate.courseTitle, canvas.width / 2, 470);
+      // Completion Date
+      ctx.font = '28px serif';
+      ctx.fillStyle = '#444';
+      ctx.textAlign = 'left';
+      ctx.fillText(
+        `Completion Date: ${new Date(certificate.completedDate).toLocaleDateString()}`,
+        180,
+        canvas.height - 170
+      );
+      // Certificate ID
+      ctx.fillText(
+        `Certificate ID: ${certificate.certificateNumber}`,
+        180,
+        canvas.height - 130
+      );
+      // Course Duration
+      ctx.fillText(
+        `Course Duration: ${certificate.courseDuration ? certificate.courseDuration + ' min' : 'N/A'}`,
+        600,
+        canvas.height - 170
+      );
+
+      // Download as PNG
+      const link = document.createElement('a');
+      link.download = `${certificate.courseTitle}-certificate.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+    img.onerror = () => {
+      alert('Failed to load certificate template image.');
+    };
   };
 
   // Get activity level color
@@ -659,7 +713,7 @@ const Profile = () => {
                       <TrendingUp className="w-5 h-5 text-green-400" />
                     </div>
                     <div>
-                      <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+                      <div className="text-2xl font-bold">₹{totalRevenue.toLocaleString('en-IN')}</div>
                       <div className="text-xs text-white/60">Total Revenue</div>
                     </div>
                   </div>
@@ -845,7 +899,7 @@ const Profile = () => {
                           <p className="text-white/70 mt-1">Your earnings summary</p>
                         </div>
                         <div className="text-right">
-                          <div className="text-4xl font-bold">${totalRevenue.toFixed(2)}</div>
+                          <div className="text-4xl font-bold">₹{totalRevenue.toLocaleString('en-IN')}</div>
                           <div className="text-white/70 text-sm">Total Revenue</div>
                         </div>
                       </div>
@@ -901,8 +955,8 @@ const Profile = () => {
                               <div className="text-sm text-gray-500">{course.sales} sales</div>
                             </div>
                             <div className="text-right">
-                              <div className="font-bold text-green-600">${course.revenue.toLocaleString()}</div>
-                              <div className="text-xs text-gray-500">${course.price}/unit</div>
+                              <div className="font-bold text-green-600">₹{course.revenue.toLocaleString('en-IN')}</div>
+                              <div className="text-xs text-gray-500">₹{course.price}/unit</div>
                             </div>
                           </div>
                         ))}
@@ -926,7 +980,7 @@ const Profile = () => {
                           <div key={course.id} className="space-y-1">
                             <div className="flex justify-between text-sm">
                               <span className="font-medium text-gray-700 truncate max-w-[200px]">{course.title}</span>
-                              <span className="text-gray-900 font-semibold">${course.revenue.toLocaleString()}</span>
+                              <span className="text-gray-900 font-semibold">₹{course.revenue.toLocaleString('en-IN')}</span>
                             </div>
                             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                               <div
@@ -1337,7 +1391,7 @@ const Profile = () => {
                           </div>
                           <span className="text-gray-700">Total Revenue</span>
                         </div>
-                        <span className="text-xl font-bold text-green-600">${totalRevenue.toLocaleString()}</span>
+                        <span className="text-xl font-bold text-green-600">₹{totalRevenue.toLocaleString('en-IN')}</span>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                         <div className="flex items-center gap-3">
@@ -1375,18 +1429,18 @@ const Profile = () => {
                       <Target className="w-5 h-5 text-green-500" />
                       <h3 className="font-semibold text-gray-900">Monthly Goal</h3>
                     </div>
-                    <p className="text-gray-600 text-sm mb-3">Reach $10,000 in revenue this month</p>
+                    <p className="text-gray-600 text-sm mb-3">Reach ₹1,00,000 in revenue this month</p>
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full" 
-                          style={{ width: `${Math.min((totalRevenue / 10000) * 100, 100)}%` }} 
+                          style={{ width: `${Math.min((totalRevenue / 100000) * 100, 100)}%` }} 
                         />
                       </div>
-                      <span className="text-sm font-medium text-gray-700">{Math.round((totalRevenue / 10000) * 100)}%</span>
+                      <span className="text-sm font-medium text-gray-700">{Math.round((totalRevenue / 100000) * 100)}%</span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>${totalRevenue.toLocaleString()} / $10,000</span>
+                      <span>₹{totalRevenue.toLocaleString('en-IN')} / ₹1,00,000</span>
                       <span>22 days left</span>
                     </div>
                   </div>
@@ -1410,7 +1464,7 @@ const Profile = () => {
                             <div className="font-medium text-gray-900 truncate text-sm">{course.title}</div>
                             <div className="text-xs text-gray-500">{course.sales} units sold</div>
                           </div>
-                          <span className="text-green-600 font-semibold text-sm">${course.revenue}</span>
+                          <span className="text-green-600 font-semibold text-sm">₹{course.revenue.toLocaleString('en-IN')}</span>
                         </div>
                       ))}
                     </div>
@@ -1606,54 +1660,82 @@ const Profile = () => {
                     </div>
                   </div>
 
-                  {/* Recent Certificates */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  {/* New Certificates Card UI */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <Award className="w-5 h-5 text-cyan-600" />
-                        Certificates
-                      </h3>
-                      <button
-                        onClick={() => setActiveTab('certificates')}
-                        className="text-cyan-600 text-sm hover:underline font-medium"
-                      >
-                        View All
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Award className="w-6 h-6 text-blue-500" />
+                        </div>
+                        <div>
+                          <div className="text-lg font-bold text-blue-900">Your Certificates</div>
+                          <div className="text-xs text-blue-500">View, download, and share your achievements</div>
+                        </div>
+                      </div>
+                      <div className="text-3xl font-bold text-blue-600">{certificates.length}</div>
                     </div>
                     {certificates.length > 0 ? (
-                      <div className="space-y-3">
-                        {certificates.slice(0, 2).map((cert) => (
-                          <div
-                            key={cert.id}
-                            className="p-4 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl border border-cyan-200 hover:shadow-md transition-all cursor-pointer"
-                            onClick={() => setSelectedCertificate(cert)}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <Award className="w-6 h-6 text-white" />
-                              </div>
+                      <div className="space-y-6">
+                        {certificates.map((cert) => (
+                          <div key={cert.id} className="rounded-2xl overflow-hidden shadow-md border border-blue-200 bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 relative">
+                            <div className="p-6 flex flex-col md:flex-row md:items-center gap-4">
                               <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-gray-900 truncate">{cert.courseTitle}</div>
-                                <div className="text-xs text-gray-500">
-                                  Completed {new Date(cert.completedDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Award className="w-5 h-5 text-white" />
+                                  <span className="uppercase text-xs font-bold text-white tracking-widest">Certificate of Completion</span>
+                                </div>
+                                <div className="text-2xl md:text-3xl font-bold text-white mb-2">{cert.courseTitle}</div>
+                                <div className="text-white/90 text-sm mb-1"><span className="font-semibold">Student:</span> {user.name}</div>
+                                <div className="text-white/90 text-sm mb-1"><span className="font-semibold">Completed:</span> {new Date(cert.completedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                                <div className="text-white/90 text-sm mb-1"><span className="font-semibold">Duration:</span> {Math.floor(cert.courseDuration / 60)} hours</div>
+                                <div className="text-white/90 text-sm mb-1"><span className="font-semibold">Certificate #:</span> {cert.certificateNumber}</div>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {cert.skills && cert.skills.map((tag) => (
+                                    <span key={tag} className="bg-white/20 text-white text-xs px-2 py-1 rounded-full">{tag}</span>
+                                  ))}
                                 </div>
                               </div>
-                              <ChevronRight className="w-5 h-5 text-gray-400" />
+                              <div className="flex flex-col gap-2 md:items-end md:justify-center">
+                                <button
+                                  className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-cyan-700 text-white rounded-xl font-semibold hover:bg-cyan-800 transition-all"
+                                  onClick={() => setSelectedCertificate(cert)}
+                                >
+                                  <Award className="w-5 h-5" /> View Certificate
+                                </button>
+                                <div className="flex gap-2 mt-2 md:mt-0">
+                                  <button
+                                    className="flex items-center justify-center p-2 bg-white/20 rounded-full hover:bg-white/30 transition"
+                                    title="Download"
+                                    onClick={() => downloadCertificate(cert)}
+                                  >
+                                    <Download className="w-5 h-5 text-white" />
+                                  </button>
+                                  <button
+                                    className="flex items-center justify-center p-2 bg-white/20 rounded-full hover:bg-white/30 transition"
+                                    title="Share"
+                                    onClick={() => setShowShareMenu(cert.id)}
+                                  >
+                                    <Share2 className="w-5 h-5 text-white" />
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-6">
-                        <div className="w-16 h-16 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center">
-                          <Award className="w-8 h-8 text-gray-400" />
+                      <div className="text-center py-12">
+                        <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center">
+                          <Award className="w-12 h-12 text-gray-400" />
                         </div>
-                        <p className="text-gray-500 text-sm mb-3">No certificates yet</p>
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">No Certificates Yet</h3>
+                        <p className="text-gray-500 mb-6">Complete courses to earn certificates and showcase your achievements!</p>
                         <Link
                           to="/courses"
-                          className="text-cyan-600 text-sm font-medium hover:underline"
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-medium hover:shadow-lg transition-all"
                         >
-                          Start Learning →
+                          <BookOpen className="w-5 h-5" />
+                          Browse Courses
                         </Link>
                       </div>
                     )}
@@ -1812,9 +1894,9 @@ const Profile = () => {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-900">${course.price || 0}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-gray-900">₹{(course.price || 0).toLocaleString('en-IN')}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-gray-900">{sales}</td>
-                            <td className="px-6 py-4 whitespace-nowrap font-semibold text-green-600">${revenue.toLocaleString()}</td>
+                            <td className="px-6 py-4 whitespace-nowrap font-semibold text-green-600">₹{revenue.toLocaleString('en-IN')}</td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Active</span>
                             </td>
@@ -2216,53 +2298,31 @@ const Profile = () => {
             )}
 
             {/* Certificate Modal */}
+            {/* New Certificate Modal */}
             {selectedCertificate && (
-              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedCertificate(null)}>
-                <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
-                  {/* Certificate Full View */}
-                  <div className="relative bg-gradient-to-br from-cyan-500 via-blue-500 to-indigo-600 p-12 text-white rounded-t-3xl">
+              <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedCertificate(null)}>
+                <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl animate-scale-in overflow-hidden" onClick={e => e.stopPropagation()}>
+                  <div className="relative">
+                    <img src={CERT_IMAGE} alt="Certificate" className="w-full object-cover" style={{ maxHeight: 500 }} />
+                    {/* Overlayed certificate info */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center px-4 py-8 pointer-events-none">
+                      <div className="bg-white/80 rounded-2xl shadow-lg px-8 py-6 flex flex-col items-center max-w-2xl w-full" style={{marginTop:100}}>
+                        <div className="text-3xl md:text-4xl font-bold text-purple-900 mb-2 break-words text-center">{user.name}</div>
+                        <div className="text-xl md:text-2xl font-semibold text-gray-700 mb-4 break-words text-center">{selectedCertificate.courseTitle}</div>
+                        <div className="flex flex-col md:flex-row gap-2 md:gap-8 text-base md:text-lg text-gray-700 font-medium mb-2 text-center">
+                          <span>Completion Date: {new Date(selectedCertificate.completedDate).toLocaleDateString()}</span>
+                          <span>Duration: {Math.floor(selectedCertificate.courseDuration / 60)} hours</span>
+                          <span>Certificate ID: {selectedCertificate.certificateNumber}</span>
+                        </div>
+                      </div>
+                    </div>
                     <button
                       onClick={() => setSelectedCertificate(null)}
-                      className="absolute top-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+                      className="absolute top-4 right-4 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white/90 transition-colors z-10"
                     >
-                      <X className="w-5 h-5" />
+                      <X className="w-5 h-5 text-gray-700" />
                     </button>
-
-                    <div className="text-center mb-8">
-                      <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full mb-6 border-4 border-white/40">
-                        <Award className="w-10 h-10" />
-                      </div>
-                      <h2 className="text-4xl font-bold mb-2">Certificate of Completion</h2>
-                      <p className="text-white/80">This is to certify that</p>
-                    </div>
-
-                    <div className="text-center mb-8">
-                      <h3 className="text-5xl font-bold mb-6 border-b-4 border-white/40 inline-block pb-2">{user.name}</h3>
-                      <p className="text-xl text-white/90 mb-4">has successfully completed the course</p>
-                      <h4 className="text-3xl font-bold mb-6">{selectedCertificate.courseTitle}</h4>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-8 text-center mb-8">
-                      <div>
-                        <p className="text-white/70 text-sm mb-1">Completed On</p>
-                        <p className="font-semibold">{new Date(selectedCertificate.completedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                      </div>
-                      <div>
-                        <p className="text-white/70 text-sm mb-1">Duration</p>
-                        <p className="font-semibold">{Math.floor(selectedCertificate.courseDuration / 60)} Hours</p>
-                      </div>
-                      <div>
-                        <p className="text-white/70 text-sm mb-1">Grade</p>
-                        <p className="font-semibold text-2xl">{selectedCertificate.grade}</p>
-                      </div>
-                    </div>
-
-                    <div className="text-center border-t border-white/20 pt-6">
-                      <p className="text-white/70 text-sm mb-2">Certificate Number</p>
-                      <p className="font-mono font-semibold">{selectedCertificate.certificateNumber}</p>
-                    </div>
                   </div>
-
                   <div className="p-6 bg-gray-50 rounded-b-3xl flex justify-center gap-4">
                     <button
                       onClick={() => downloadCertificate(selectedCertificate)}
@@ -2272,9 +2332,7 @@ const Profile = () => {
                       Download Certificate
                     </button>
                     <button
-                      onClick={() => {
-                        setShowShareMenu(selectedCertificate.id);
-                      }}
+                      onClick={() => setShowShareMenu(selectedCertificate.id)}
                       className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
                     >
                       <Share2 className="w-5 h-5" />
@@ -2320,7 +2378,7 @@ const Profile = () => {
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-600">Student #{enrollment.userId}</td>
-                              <td className="px-4 py-3 text-sm font-semibold text-green-600">${course?.price || 0}</td>
+                              <td className="px-4 py-3 text-sm font-semibold text-green-600">₹{(course?.price || 0).toLocaleString('en-IN')}</td>
                               <td className="px-4 py-3">
                                 <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Completed</span>
                               </td>

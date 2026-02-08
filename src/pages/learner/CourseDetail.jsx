@@ -28,6 +28,7 @@ import {
   Video,
   FileText,
   HelpCircle,
+  CreditCard,
 } from 'lucide-react';
 
 const CourseDetail = () => {
@@ -41,10 +42,12 @@ const CourseDetail = () => {
     addReview,
     users,
     enrollCourse,
+    getPendingPayment,
   } = useApp();
 
   const course = getCourseById(parseInt(courseId));
   const enrollment = user ? getEnrollment(user.id, parseInt(courseId)) : null;
+  const pendingPayment = user ? getPendingPayment(user.id, parseInt(courseId)) : null;
   const reviews = getCourseReviews(parseInt(courseId));
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -112,7 +115,16 @@ const CourseDetail = () => {
       navigate('/login');
       return;
     }
+    // Block if payment is pending verification
+    if (pendingPayment) {
+      return;
+    }
     if (!enrollment) {
+      // If course requires payment, redirect to payment page
+      if (course.access === 'payment' && course.price > 0) {
+        navigate(`/courses/${courseId}/payment`);
+        return;
+      }
       enrollCourse(user.id, parseInt(courseId));
     }
     navigate(`/learn/${courseId}/${lessonId}`);
@@ -212,13 +224,28 @@ const CourseDetail = () => {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-4">
-                <button
-                  onClick={() => handleStartLesson(course.lessons[0].id)}
-                  className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 font-semibold rounded-2xl hover:shadow-xl hover:shadow-cyan-400/30 hover:-translate-y-1 transition-all duration-300"
-                >
-                  <Play className="w-6 h-6" />
-                  <span>{enrollment ? 'Continue Learning' : 'Start Course'}</span>
-                </button>
+                {!enrollment && pendingPayment ? (
+                  <div className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-400 to-orange-400 text-slate-950 font-semibold rounded-2xl cursor-default">
+                    <Clock className="w-6 h-6 animate-pulse" />
+                    <span>Payment Under Verification</span>
+                  </div>
+                ) : !enrollment && course.access === 'payment' && course.price > 0 ? (
+                  <button
+                    onClick={() => user ? navigate(`/courses/${courseId}/payment`) : navigate('/login')}
+                    className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 font-semibold rounded-2xl hover:shadow-xl hover:shadow-cyan-400/30 hover:-translate-y-1 transition-all duration-300"
+                  >
+                    <CreditCard className="w-6 h-6" />
+                    <span>Enroll Now — ₹{course.price.toLocaleString('en-IN')}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleStartLesson(course.lessons[0].id)}
+                    className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 font-semibold rounded-2xl hover:shadow-xl hover:shadow-cyan-400/30 hover:-translate-y-1 transition-all duration-300"
+                  >
+                    <Play className="w-6 h-6" />
+                    <span>{enrollment ? 'Continue Learning' : 'Start Course — Free'}</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setIsLiked(!isLiked)}
                   className={`p-4 rounded-2xl border-2 transition-all duration-300 ${
@@ -254,6 +281,23 @@ const CourseDetail = () => {
                   </div>
                 </div>
                 <div className="p-6">
+                  {/* Price Display */}
+                  {!enrollment && (
+                    <div className="mb-6 pb-5 border-b border-gray-100">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-bold text-gray-900">
+                          {course.price > 0 ? `₹${course.price.toLocaleString('en-IN')}` : 'Free'}
+                        </span>
+                        {course.price > 0 && (
+                          <span className="text-lg text-gray-400 line-through">₹{Math.round(course.price * 1.5).toLocaleString('en-IN')}</span>
+                        )}
+                      </div>
+                      {course.price > 0 && (
+                        <p className="text-xs text-green-600 font-medium mt-1">🔥 33% off — Limited time offer</p>
+                      )}
+                    </div>
+                  )}
+
                   {enrollment && (
                     <div className="mb-6">
                       <div className="flex justify-between text-sm mb-2">

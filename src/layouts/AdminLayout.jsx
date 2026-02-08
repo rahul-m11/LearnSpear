@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { BarChart3, LogOut, Home, PieChart } from 'lucide-react';
+import { BarChart3, LogOut, Home, PieChart, CreditCard } from 'lucide-react';
 import { LogoIcon } from '../components/LogoIcon';
 
 const AdminLayout = () => {
@@ -16,6 +16,7 @@ const AdminLayout = () => {
 
   const navItems = [
     { path: '/admin/dashboard', label: 'Analytics', icon: BarChart3 },
+    { path: '/admin/payments', label: 'Payments', icon: CreditCard },
     { path: '/admin/reporting', label: 'Reports', icon: PieChart },
   ];
 

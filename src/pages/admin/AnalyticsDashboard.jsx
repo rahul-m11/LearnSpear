@@ -6,7 +6,7 @@ import {
   Users,
   BookOpen,
   Clock,
-  DollarSign,
+  IndianRupee,
   Eye,
   Play,
   Award,
@@ -221,14 +221,14 @@ const AnalyticsDashboard = () => {
             <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white hover-lift">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-100 text-sm mb-1 flex items-center gap-1"><DollarSign className="w-4 h-4" /> Total Revenue</p>
-                  <p className="text-4xl font-bold">${stats.totalRevenue.toFixed(2)}</p>
+                  <p className="text-green-100 text-sm mb-1 flex items-center gap-1"><IndianRupee className="w-4 h-4" /> Total Revenue</p>
+                  <p className="text-4xl font-bold">₹{stats.totalRevenue.toLocaleString('en-IN')}</p>
                   <p className="text-green-200 text-sm flex items-center mt-2">
                     <ArrowUp className="w-4 h-4 mr-1" />+23% from last month
                   </p>
                 </div>
                 <div className="p-4 bg-white/20 rounded-xl">
-                  <DollarSign className="w-10 h-10" />
+                  <IndianRupee className="w-10 h-10" />
                 </div>
               </div>
             </div>
@@ -285,12 +285,12 @@ const AnalyticsDashboard = () => {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-green-500" />
-                  <DollarSign className="w-5 h-5 text-green-500" /> Revenue & Sales Trends
+                  <IndianRupee className="w-5 h-5 text-green-500" /> Revenue & Sales Trends
                 </h3>
                 <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                    <span className="text-gray-600">Revenue ($)</span>
+                    <span className="text-gray-600">Revenue (₹)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-blue-500"></div>
@@ -302,7 +302,7 @@ const AnalyticsDashboard = () => {
                 {monthlyData.map((data) => (
                   <div key={data.month} className="flex-1 flex flex-col items-center gap-1">
                     <div className="w-full flex flex-col items-center gap-1 h-52 justify-end">
-                      <div className="w-full bg-green-500 rounded-t transition-all duration-500 hover:bg-green-600 cursor-pointer" style={{ height: `${(data.revenue / 1200) * 100}%` }} title={`Revenue: $${data.revenue}`}></div>
+                      <div className="w-full bg-green-500 rounded-t transition-all duration-500 hover:bg-green-600 cursor-pointer" style={{ height: `${(data.revenue / 1200) * 100}%` }} title={`Revenue: ₹${data.revenue}`}></div>
                       <div className="w-full bg-blue-500 rounded-t transition-all duration-500 hover:bg-blue-600 cursor-pointer" style={{ height: `${(data.sales / 50) * 100}%` }} title={`Sales: ${data.sales}`}></div>
                     </div>
                     <span className="text-xs text-gray-500 mt-1">{data.month}</span>
@@ -313,7 +313,7 @@ const AnalyticsDashboard = () => {
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-fade-in-up">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
-                <DollarSign className="w-5 h-5 text-green-500" />
+                <IndianRupee className="w-5 h-5 text-green-500" />
                 <Trophy className="w-5 h-5 text-yellow-500" /> Top Revenue Courses
               </h3>
               <div className="space-y-4">
@@ -325,9 +325,9 @@ const AnalyticsDashboard = () => {
                     <img src={course.image} alt={course.title} className="w-10 h-10 rounded-lg object-cover" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 text-sm truncate">{course.title}</p>
-                      <p className="text-xs text-gray-500">{course.enrollments} sold × ${course.price}</p>
+                      <p className="text-xs text-gray-500">{course.enrollments} sold × ₹{course.price}</p>
                     </div>
-                    <p className="font-bold text-green-600">${course.revenue.toFixed(0)}</p>
+                    <p className="font-bold text-green-600">₹{course.revenue.toLocaleString('en-IN')}</p>
                   </div>
                 )) : <p className="text-gray-500 text-center py-4">No paid courses yet</p>}
               </div>
@@ -368,7 +368,7 @@ const AnalyticsDashboard = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`font-medium ${course.isPaid ? 'text-green-600' : 'text-gray-500'}`}>
-                          {course.isPaid ? `$${course.price}` : 'Free'}
+                          {course.isPaid ? `₹${course.price}` : 'Free'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -378,7 +378,7 @@ const AnalyticsDashboard = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-bold text-green-600">${course.revenue.toFixed(2)}</span>
+                        <span className="font-bold text-green-600">₹{course.revenue.toLocaleString('en-IN')}</span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">

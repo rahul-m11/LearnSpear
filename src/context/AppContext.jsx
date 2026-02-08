@@ -89,7 +89,7 @@ const initialCourses = [
     published: true,
     visibility: 'everyone',
     access: 'payment',
-    price: 29.99,
+    price: 1,
     views: 1250,
     createdAt: '2026-01-15T10:00:00Z',
     attendees: [{ email: 'learner@learnsphere.com', invitedDate: '2026-01-20T10:00:00Z' }],
@@ -137,7 +137,7 @@ const initialCourses = [
     published: true,
     visibility: 'everyone',
     access: 'payment',
-    price: 39.99,
+    price: 1,
     views: 850,
     createdAt: '2026-01-20T14:30:00Z',
     lessons: [
@@ -174,7 +174,7 @@ const initialCourses = [
     published: true,
     visibility: 'everyone',
     access: 'payment',
-    price: 49.99,
+    price: 1,
     views: 2100,
     createdAt: '2026-01-10T09:15:00Z',
     attendees: [],
@@ -202,7 +202,7 @@ const initialCourses = [
     published: true,
     visibility: 'everyone',
     access: 'payment',
-    price: 69.99,
+    price: 1,
     views: 3200,
     createdAt: '2026-01-05T08:00:00Z',
     attendees: [],
@@ -248,7 +248,7 @@ const initialCourses = [
     published: true,
     visibility: 'everyone',
     access: 'payment',
-    price: 79.99,
+    price: 1,
     views: 1850,
     createdAt: '2026-01-12T11:00:00Z',
     attendees: [],
@@ -285,7 +285,7 @@ const initialCourses = [
     published: true,
     visibility: 'everyone',
     access: 'payment',
-    price: 59.99,
+    price: 1,
     views: 980,
     createdAt: '2026-01-18T09:30:00Z',
     attendees: [],
@@ -322,7 +322,7 @@ const initialCourses = [
     published: true,
     visibility: 'everyone',
     access: 'payment',
-    price: 49.99,
+    price: 1,
     views: 1450,
     createdAt: '2026-01-08T14:00:00Z',
     attendees: [],
@@ -589,6 +589,17 @@ export const AppProvider = ({ children }) => {
   const [quizAttempts, setQuizAttempts] = useState({});
   const [likedCourses, setLikedCourses] = useState([]);
   const [bookmarkedCourses, setBookmarkedCourses] = useState([]);
+  const [payments, setPayments] = useState(() => {
+    try {
+      const saved = localStorage.getItem('learnspear_payments');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  // Persist payments to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('learnspear_payments', JSON.stringify(payments));
+  }, [payments]);
 
   const getLocalDateKey = (date = new Date()) => {
     // YYYY-MM-DD in user's local timezone
@@ -995,6 +1006,63 @@ export const AppProvider = ({ children }) => {
     return courses.filter((course) => bookmarkedCourses.includes(course.id));
   };
 
+  // Payment functions
+  const addPayment = (payment) => {
+    setPayments(prev => [...prev, payment]);
+  };
+
+  const getPaymentHistory = (userId) => {
+    return payments.filter(p => p.userId === userId);
+  };
+
+  const hasPurchased = (userId, courseId) => {
+    return payments.some(p => p.userId === userId && p.courseId === courseId && p.status === 'completed');
+  };
+
+  // Check if user has a pending payment for a course
+  const getPendingPayment = (userId, courseId) => {
+    return payments.find(p => p.userId === userId && p.courseId === courseId && p.status === 'pending');
+  };
+
+  // Get all pending payments (for admin)
+  const getAllPendingPayments = () => {
+    return payments.filter(p => p.status === 'pending');
+  };
+
+  // Admin approves a payment -> enroll user
+  const approvePayment = (paymentId) => {
+    setPayments(prev => prev.map(p => {
+      if (p.id === paymentId) {
+        // Enroll the user when payment is approved
+        enrollCourse(p.userId, p.courseId);
+        return { ...p, status: 'completed', approvedAt: new Date().toISOString() };
+      }
+      return p;
+    }));
+  };
+
+  // Admin rejects a payment
+  const rejectPayment = (paymentId, reason) => {
+    setPayments(prev => prev.map(p => {
+      if (p.id === paymentId) {
+        return { ...p, status: 'rejected', rejectedAt: new Date().toISOString(), rejectReason: reason || 'Payment not received' };
+      }
+      return p;
+    }));
+  };
+
+  // Check if a UTR has already been used in any status
+  const checkUTR = (utr) => {
+    const existing = payments.find(p => p.transactionRef === utr);
+    if (!existing) return { used: false };
+    return { used: true, status: existing.status, paymentId: existing.id, userId: existing.userId, courseId: existing.courseId };
+  };
+
+  // Get user's payment for a course (any status)
+  const getUserPaymentForCourse = (userId, courseId) => {
+    return payments.filter(p => p.userId === userId && p.courseId === courseId).sort((a, b) => new Date(b.date) - new Date(a.date));
+  };
+
   const value = {
     user,
     users,
@@ -1038,6 +1106,16 @@ export const AppProvider = ({ children }) => {
     toggleBookmarkCourse,
     removeCourse,
     getBookmarkedCourses,
+    payments,
+    addPayment,
+    getPaymentHistory,
+    hasPurchased,
+    checkUTR,
+    getPendingPayment,
+    getAllPendingPayments,
+    approvePayment,
+    rejectPayment,
+    getUserPaymentForCourse,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

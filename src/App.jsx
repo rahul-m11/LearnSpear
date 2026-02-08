@@ -9,12 +9,14 @@ import LearnerLayout from './layouts/LearnerLayout';
 // Admin/Instructor Pages
 import AnalyticsDashboard from './pages/admin/AnalyticsDashboard';
 import ReportingDashboard from './pages/admin/ReportingDashboard';
+import PaymentApprovals from './pages/admin/PaymentApprovals';
 
 // Learner Pages
 import MyCourses from './pages/learner/MyCourses';
 import CourseDetail from './pages/learner/CourseDetail';
 import LessonPlayer from './pages/learner/LessonPlayer';
 import Profile from './pages/learner/Profile';
+import Payment from './pages/learner/Payment';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -34,9 +36,13 @@ function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AnalyticsDashboard />} />
+          <Route path="payments" element={<PaymentApprovals />} />
           <Route path="reporting" element={<ReportingDashboard />} />
         </Route>
       )}
+
+      {/* Payment - standalone (no layout wrapper) */}
+      <Route path="/courses/:courseId/payment" element={<Payment />} />
 
       {/* Learner Routes */}
       <Route path="/" element={<LearnerLayout />}>
