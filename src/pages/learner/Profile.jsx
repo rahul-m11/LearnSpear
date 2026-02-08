@@ -533,42 +533,50 @@ const Profile = () => {
     img.crossOrigin = 'anonymous';
     img.src = CERT_IMAGE;
     img.onload = () => {
-      // Set canvas size to match image
       canvas.width = img.width;
       canvas.height = img.height;
       ctx.drawImage(img, 0, 0);
 
-      // Overlay text (coordinates are approximate, adjust as needed)
-      ctx.font = '48px serif';
-      ctx.fillStyle = '#5B2A6B';
+      // --- Certificate Text Placement (coordinates are based on the attached image) ---
+      // Student Name (center, large, script-like font)
+      ctx.save();
+      ctx.font = 'bold 54px serif';
+      ctx.fillStyle = '#222';
       ctx.textAlign = 'center';
-      // Student Name
-      ctx.fillText(user.name, canvas.width / 2, 370);
-      // Course Name
-      ctx.font = '36px serif';
-      ctx.fillStyle = '#3B2250';
-      ctx.fillText(certificate.courseTitle, canvas.width / 2, 470);
-      // Completion Date
-      ctx.font = '28px serif';
+      ctx.fillText(user.name, canvas.width / 2, 320);
+      ctx.restore();
+
+      // Course Name (center, in brackets, purple)
+      ctx.save();
+      ctx.font = 'bold 38px serif';
+      ctx.fillStyle = '#7c3a7a';
+      ctx.textAlign = 'center';
+      ctx.fillText(`[ ${certificate.courseTitle} ]`, canvas.width / 2, 390);
+      ctx.restore();
+
+      // Completion Date (bottom left, small)
+      ctx.save();
+      ctx.font = '22px serif';
       ctx.fillStyle = '#444';
       ctx.textAlign = 'left';
-      ctx.fillText(
-        `Completion Date: ${new Date(certificate.completedDate).toLocaleDateString()}`,
-        180,
-        canvas.height - 170
-      );
-      // Certificate ID
-      ctx.fillText(
-        `Certificate ID: ${certificate.certificateNumber}`,
-        180,
-        canvas.height - 130
-      );
-      // Course Duration
-      ctx.fillText(
-        `Course Duration: ${certificate.courseDuration ? certificate.courseDuration + ' min' : 'N/A'}`,
-        600,
-        canvas.height - 170
-      );
+      ctx.fillText(`Completion Date: ${new Date(certificate.completedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}`, 120, canvas.height - 120);
+      ctx.restore();
+
+      // Course Duration (bottom left, next to date)
+      ctx.save();
+      ctx.font = '22px serif';
+      ctx.fillStyle = '#444';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Course Duration: ${certificate.courseDuration ? Math.round(certificate.courseDuration/60) + ' Weeks' : 'N/A'}`, 520, canvas.height - 120);
+      ctx.restore();
+
+      // Certificate ID (bottom left, under date)
+      ctx.save();
+      ctx.font = '22px serif';
+      ctx.fillStyle = '#444';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Certificate ID: ${certificate.certificateNumber}`, 120, canvas.height - 80);
+      ctx.restore();
 
       // Download as PNG
       const link = document.createElement('a');
