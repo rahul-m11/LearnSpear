@@ -12,6 +12,7 @@ import {
   createLessonDb,
   updateLessonDb,
   deleteLessonDb,
+  uploadLessonContentFile,
   logLoginEvent,
   updateLastLoginAt,
   ensureBadgesForPoints,
@@ -615,6 +616,14 @@ export const AppProvider = ({ children }) => {
 
   const dbEnabled = isSupabaseConfigured() && supabase;
 
+  const promiseWithTimeout = (promise, timeoutMs, timeoutMessage = 'supabase_timeout') => {
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+  };
+
   const getLocalDateKey = (date = new Date()) => {
     // YYYY-MM-DD in user's local timezone
     return date.toLocaleDateString('en-CA');
@@ -752,6 +761,70 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // Realtime sync: when courses/lessons change, refresh for everyone.
+  useEffect(() => {
+    if (!dbEnabled) return;
+
+    let didCancel = false;
+    let reloadTimer;
+    let pollTimer;
+
+    const scheduleReload = () => {
+      if (didCancel) return;
+      clearTimeout(reloadTimer);
+      // small debounce to collapse bursts (e.g., lesson insert + course update)
+      reloadTimer = setTimeout(() => {
+        loadCourses();
+      }, 250);
+    };
+
+    const startPolling = () => {
+      if (didCancel) return;
+      if (pollTimer) return;
+      // Fallback for environments where WebSockets are blocked.
+      pollTimer = setInterval(() => {
+        loadCourses();
+      }, 5000);
+    };
+
+    const stopPolling = () => {
+      if (!pollTimer) return;
+      clearInterval(pollTimer);
+      pollTimer = null;
+    };
+
+    const channel = supabase
+      .channel('public:courses_lessons_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lessons' }, scheduleReload)
+      .subscribe((status) => {
+        // status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR'
+        if (status === 'SUBSCRIBED') {
+          stopPolling();
+          return;
+        }
+        // If realtime can't connect, keep the app consistent via polling.
+        if (status === 'TIMED_OUT' || status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          startPolling();
+        }
+      });
+
+    // In case the callback never fires (rare), start polling after a grace period.
+    const safety = setTimeout(() => startPolling(), 6000);
+
+    return () => {
+      didCancel = true;
+      clearTimeout(reloadTimer);
+      clearTimeout(safety);
+      stopPolling();
+      try {
+        supabase.removeChannel(channel);
+      } catch {
+        // ignore
+      }
+    };
+  }, [dbEnabled]);
+
   const loadEnrollments = async (userId) => {
     if (!dbEnabled || !userId) return;
     try {
@@ -802,6 +875,7 @@ export const AppProvider = ({ children }) => {
     }
 
     try {
+      console.log('Login started for:', email);
       const normalizedEmail = String(email || '').trim().toLowerCase();
       const roleDomains = {
         admin: '@admin.in',
@@ -811,11 +885,16 @@ export const AppProvider = ({ children }) => {
 
       // Pre-check: ensure the account is "listed in database" before attempting auth.
       // This also avoids repeated invalid-credential auth calls when the user never registered.
-      const { data: profileByEmail, error: profileByEmailError } = await supabase
-        .from('profiles')
-        .select('id, role, email')
-        .eq('email', normalizedEmail)
-        .maybeSingle();
+      console.log('Login step 1: Pre-check profiles by email');
+      const { data: profileByEmail, error: profileByEmailError } = await promiseWithTimeout(
+        supabase
+          .from('profiles')
+          .select('id, role, email')
+          .eq('email', normalizedEmail)
+          .maybeSingle(),
+        15000,
+        'timeout_precheck_profile'
+      );
 
       if (profileByEmailError) {
         // Non-blocking but helpful error
@@ -823,12 +902,15 @@ export const AppProvider = ({ children }) => {
       }
 
       if (!profileByEmail) {
+        console.log('Login failed: Email not found in profiles table');
         return {
           ok: false,
           code: 'not_registered',
           message: 'No account found for this email. Please create an account first.',
         };
       }
+
+      console.log('Login profile found:', profileByEmail);
 
       const requiredDomainForRole = roleDomains[profileByEmail.role];
       if (requiredDomainForRole && !normalizedEmail.endsWith(requiredDomainForRole)) {
@@ -839,14 +921,21 @@ export const AppProvider = ({ children }) => {
         };
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      console.log('Login step 2: Auth signInWithPassword');
+      const { error } = await promiseWithTimeout(
+        supabase.auth.signInWithPassword({ email, password }),
+        20000,
+        'timeout_signin'
+      );
 
       if (error) throw error;
 
-      const { data: authData, error: authUserError } = await supabase.auth.getUser();
+      console.log('Login step 3: Auth getUser');
+      const { data: authData, error: authUserError } = await promiseWithTimeout(
+        supabase.auth.getUser(),
+        15000,
+        'timeout_getuser'
+      );
       if (authUserError) throw authUserError;
 
       const authUser = authData?.user;
@@ -860,22 +949,29 @@ export const AppProvider = ({ children }) => {
 
       // Ensure this user exists in public.profiles ("listed in database")
       const fetchProfileRow = async () => {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, role, email')
-          .eq('id', userId)
-          .single();
+        console.log('Login step 4: Fetch profile by ID for user:', userId);
+        const { data: profile, error: profileError } = await promiseWithTimeout(
+          supabase
+            .from('profiles')
+            .select('id, role, email')
+            .eq('id', userId)
+            .single(),
+          15000,
+          'timeout_fetch_profile_after_auth'
+        );
         return { profile, profileError };
       };
 
       let { profile, profileError } = await fetchProfileRow();
       if (profileError || !profile) {
+        console.log('Profile not found for ID, retrying once...');
         // small retry (trigger/profile creation can lag slightly)
         await new Promise((r) => setTimeout(r, 500));
         ({ profile, profileError } = await fetchProfileRow());
       }
 
       if (profileError || !profile) {
+        console.error('Final profile fetch failed:', profileError);
         await supabase.auth.signOut();
         return {
           ok: false,
@@ -904,11 +1000,20 @@ export const AppProvider = ({ children }) => {
         };
       }
 
+      console.log('Login successful for role:', role);
       return { ok: true };
     } catch (error) {
       const rawMessage = String(error?.message || 'Login failed');
       const normalized = rawMessage.toLowerCase();
       console.error('Login error:', rawMessage);
+
+      if (normalized.includes('timeout')) {
+        return {
+          ok: false,
+          code: 'timeout',
+          message: `Login is taking too long (Reason: ${rawMessage}). Check your internet and Supabase connection, then try again.`,
+        };
+      }
 
       if (normalized.includes('email not confirmed')) {
         return {
@@ -1055,7 +1160,7 @@ export const AppProvider = ({ children }) => {
 
     setCourses(
       courses.map((course) =>
-        course.id === courseId ? { ...course, ...updates } : course
+        parseInt(course.id) === parseInt(courseId) ? { ...course, ...updates } : course
       )
     );
   };
@@ -1065,13 +1170,14 @@ export const AppProvider = ({ children }) => {
       try {
         await deleteCourseDb(courseId);
         await loadCourses();
-        return;
+        return { ok: true };
       } catch (error) {
         console.error('Delete course error:', error);
-        return;
+        return { ok: false, message: error.message };
       }
     }
-    setCourses(courses.filter((course) => course.id !== courseId));
+    setCourses(courses.filter((course) => parseInt(course.id) !== parseInt(courseId)));
+    return { ok: true };
   };
 
   const getCourseById = (courseId) => {
@@ -1082,9 +1188,32 @@ export const AppProvider = ({ children }) => {
   const addLesson = async (courseId, lessonData) => {
     if (dbEnabled) {
       try {
+        let nextLessonData = { ...lessonData };
+
+        // If user selected an upload file in the UI, persist it via Supabase Storage.
+        // We do NOT store blob: URLs in the database.
+        const videoFile = nextLessonData?.videoFile;
+        const hasLocalBlobUrl = typeof nextLessonData?.url === 'string' && nextLessonData.url.startsWith('blob:');
+        if (videoFile instanceof File) {
+          const { publicUrl } = await uploadLessonContentFile({ courseId, file: videoFile });
+          nextLessonData = { ...nextLessonData, url: publicUrl };
+        } else if (hasLocalBlobUrl) {
+          // Prevent saving unusable blob URL into DB
+          nextLessonData = { ...nextLessonData, url: '' };
+        }
+
+        // Always strip non-serializable / non-DB fields before sending to DB
+        if ('videoFile' in nextLessonData) delete nextLessonData.videoFile;
+        if ('transcript' in nextLessonData) delete nextLessonData.transcript;
+        if ('responsibleId' in nextLessonData) delete nextLessonData.responsibleId;
+
         const course = getCourseById(courseId);
         const orderIndex = (course?.lessons?.length || 0) + 1;
-        await createLessonDb({ courseId, lessonData, orderIndex });
+        await promiseWithTimeout(
+          createLessonDb({ courseId, lessonData: nextLessonData, orderIndex }),
+          15000,
+          'Saving lesson timed out. Please check your connection and try again.'
+        );
         await loadCourses();
         return { ok: true };
       } catch (error) {
@@ -1094,14 +1223,16 @@ export const AppProvider = ({ children }) => {
     }
 
     const course = courses.find((c) => c.id === courseId);
-    if (!course) return;
+    if (!course) return { ok: false, message: 'Course not found. Please refresh and try again.' };
 
     const newLesson = {
       ...lessonData,
       id: Date.now(),
     };
+    // Remove non-serializable fields
+    if ('videoFile' in newLesson) delete newLesson.videoFile;
 
-    updateCourse(courseId, {
+    await updateCourse(courseId, {
       lessons: [...course.lessons, newLesson],
     });
 
@@ -1111,7 +1242,23 @@ export const AppProvider = ({ children }) => {
   const updateLesson = async (courseId, lessonId, updates) => {
     if (dbEnabled) {
       try {
-        await updateLessonDb({ lessonId, updates });
+        let nextUpdates = { ...updates };
+
+        const videoFile = nextUpdates?.videoFile;
+        const hasLocalBlobUrl = typeof nextUpdates?.url === 'string' && nextUpdates.url.startsWith('blob:');
+        if (videoFile instanceof File) {
+          const { publicUrl } = await uploadLessonContentFile({ courseId, file: videoFile });
+          nextUpdates = { ...nextUpdates, url: publicUrl };
+        } else if (hasLocalBlobUrl) {
+          nextUpdates = { ...nextUpdates, url: '' };
+        }
+
+        // Never attempt to send File objects or non-DB fields to the DB update.
+        if ('videoFile' in nextUpdates) delete nextUpdates.videoFile;
+        if ('transcript' in nextUpdates) delete nextUpdates.transcript;
+        if ('responsibleId' in nextUpdates) delete nextUpdates.responsibleId;
+
+        await updateLessonDb({ lessonId, updates: nextUpdates });
         await loadCourses();
         return { ok: true };
       } catch (error) {
@@ -1121,14 +1268,13 @@ export const AppProvider = ({ children }) => {
     }
 
     const course = courses.find((c) => c.id === courseId);
-    if (!course) return;
+    if (!course) return { ok: false, message: 'Course not found' };
 
-    updateCourse(courseId, {
+    await updateCourse(courseId, {
       lessons: course.lessons.map((lesson) =>
         lesson.id === lessonId ? { ...lesson, ...updates } : lesson
       ),
     });
-
     return { ok: true };
   };
 

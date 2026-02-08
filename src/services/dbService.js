@@ -1,5 +1,42 @@
 import { supabase } from '../lib/supabaseClient';
 
+const LESSON_CONTENT_BUCKET = 'lesson-content';
+
+const sanitizeFilename = (name) => String(name || 'file')
+  .replace(/[^a-zA-Z0-9._-]/g, '_')
+  .replace(/_+/g, '_')
+  .slice(0, 120);
+
+export const uploadLessonContentFile = async ({ courseId, file }) => {
+  if (!supabase) throw new Error('Supabase not configured');
+  if (!file) throw new Error('No file provided');
+
+  const safeName = sanitizeFilename(file.name);
+  const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
+  const path = `${courseId}/${id}-${safeName}`;
+
+  const { error: uploadError } = await supabase
+    .storage
+    .from(LESSON_CONTENT_BUCKET)
+    .upload(path, file, {
+      contentType: file.type || 'application/octet-stream',
+      upsert: false,
+    });
+
+  if (uploadError) {
+    // Common causes: bucket missing, bucket not public, RLS/storage policies
+    throw new Error(uploadError.message || 'Failed to upload file');
+  }
+
+  const { data } = supabase.storage.from(LESSON_CONTENT_BUCKET).getPublicUrl(path);
+  const publicUrl = data?.publicUrl;
+  if (!publicUrl) {
+    throw new Error(`Uploaded but could not resolve public URL. Ensure Supabase bucket "${LESSON_CONTENT_BUCKET}" exists and is public.`);
+  }
+
+  return { publicUrl, path, bucket: LESSON_CONTENT_BUCKET };
+};
+
 const isDuplicateError = (error) => {
   const code = error?.code || error?.details;
   return code === '23505' || String(error?.message || '').toLowerCase().includes('duplicate');
@@ -37,12 +74,13 @@ export const fetchCoursesWithLessons = async () => {
         id: l.id,
         title: l.title,
         type: l.type,
-        description: l.description,
-        url: l.content_url,
-        duration: l.duration,
+        description: l.description || '',
+        url: l.content_url || '',
+        duration: l.duration || 0,
         allowDownload: Boolean(l.allow_download),
         attachments: l.attachments || [],
         quizId: l.quiz_id,
+        moduleNumber: l.order_index || 0,
       })),
   }));
 };
@@ -130,14 +168,14 @@ export const deleteCourseDb = async (courseId) => {
 const toDbLessonPayload = (courseId, lessonData, orderIndex) => ({
   course_id: courseId,
   title: lessonData.title,
-  description: lessonData.description,
-  type: lessonData.type,
-  content_url: lessonData.url,
-  duration: Number(lessonData.duration ?? 0),
+  description: lessonData.description || '',
+  type: lessonData.type || 'video',
+  content_url: lessonData.url || '',
+  duration: Number(lessonData.duration) || 0,
   allow_download: Boolean(lessonData.allowDownload),
   attachments: lessonData.attachments || [],
   quiz_id: lessonData.quizId || null,
-  order_index: Number(orderIndex ?? lessonData.moduleNumber ?? 0),
+  order_index: Number(orderIndex ?? lessonData.moduleNumber) || 0,
 });
 
 export const createLessonDb = async ({ courseId, lessonData, orderIndex }) => {
@@ -159,11 +197,11 @@ export const updateLessonDb = async ({ lessonId, updates }) => {
   if ('description' in updates) payload.description = updates.description;
   if ('type' in updates) payload.type = updates.type;
   if ('url' in updates) payload.content_url = updates.url;
-  if ('duration' in updates) payload.duration = Number(updates.duration ?? 0);
+  if ('duration' in updates) payload.duration = Number(updates.duration) || 0;
   if ('allowDownload' in updates) payload.allow_download = Boolean(updates.allowDownload);
   if ('attachments' in updates) payload.attachments = updates.attachments || [];
   if ('quizId' in updates) payload.quiz_id = updates.quizId || null;
-  if ('moduleNumber' in updates) payload.order_index = Number(updates.moduleNumber ?? 0);
+  if ('moduleNumber' in updates) payload.order_index = Number(updates.moduleNumber) || 0;
 
   const { error } = await supabase
     .from('lessons')

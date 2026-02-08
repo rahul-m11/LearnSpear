@@ -53,6 +53,7 @@ const CourseForm = () => {
   const [formData, setFormData] = useState(course || {});
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [editingLesson, setEditingLesson] = useState(null);
+  const [savingLesson, setSavingLesson] = useState(false);
   const [lessonTab, setLessonTab] = useState('content');
 
   // Add Attendees modal state
@@ -125,22 +126,56 @@ const CourseForm = () => {
 
   const handleEditLesson = (lesson) => {
     setEditingLesson(lesson);
-    setLessonForm(lesson);
+    setLessonForm({
+      title: '',
+      type: 'video',
+      description: '',
+      url: '',
+      duration: 0,
+      allowDownload: false,
+      responsibleId: null,
+      attachments: [],
+      moduleNumber: 1,
+      videoFile: null,
+      transcript: '',
+      ...lesson,
+    });
     setLessonTab('content');
     setShowLessonModal(true);
   };
 
   const handleSaveLesson = async () => {
-    const result = editingLesson
-      ? await updateLesson(parseInt(courseId), editingLesson.id, lessonForm)
-      : await addLesson(parseInt(courseId), lessonForm);
-
-    if (result?.ok) {
-      setShowLessonModal(false);
+    if (!lessonForm.title || !String(lessonForm.title).trim()) {
+      alert('Please enter a lesson title.');
       return;
     }
 
-    alert(result?.message || 'Failed to save lesson. Please try again.');
+    setSavingLesson(true);
+    try {
+      const dataToSave = { ...lessonForm };
+      
+      // Clean up file objects
+      if (dataToSave.videoFile && !(dataToSave.videoFile instanceof File)) {
+        delete dataToSave.videoFile;
+      }
+
+      console.log('Saving lesson...', dataToSave);
+      const result = editingLesson
+        ? await updateLesson(parseInt(courseId), editingLesson.id, dataToSave)
+        : await addLesson(parseInt(courseId), dataToSave);
+
+      if (result?.ok) {
+        setShowLessonModal(false);
+        return;
+      }
+
+      alert(result?.message || 'Failed to save lesson.');
+    } catch (err) {
+      console.error('Save error:', err);
+      alert('Error: ' + (err.message || 'Unknown error'));
+    } finally {
+      setSavingLesson(false);
+    }
   };
 
   const handleDeleteLesson = async (lessonId) => {
@@ -579,25 +614,31 @@ const CourseForm = () => {
         </div>
       </div>
 
-      {/* Lesson Modal */}
       {showLessonModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
-              <h2 className="text-xl font-bold text-gray-900">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4" onClick={() => setShowLessonModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-2xl h-[85vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex-shrink-0 border-b border-gray-100 px-8 py-5 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">
                 {editingLesson ? 'Edit Lesson' : 'Add Lesson'}
               </h2>
+              <button 
+                onClick={() => setShowLessonModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-400" />
+              </button>
             </div>
-            <div className="border-b border-gray-200">
-              <nav className="flex space-x-8 px-6">
+            
+            <div className="flex-shrink-0 border-b border-gray-100">
+              <nav className="flex space-x-8 px-8">
                 {['content', 'description', 'attachments'].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setLessonTab(tab)}
-                    className={`py-3 px-1 border-b-2 font-medium text-sm ${
+                    className={`py-4 px-2 border-b-2 font-semibold text-sm transition-all ${
                       lessonTab === tab
                         ? 'border-primary-600 text-primary-600'
-                        : 'border-transparent text-gray-500'
+                        : 'border-transparent text-gray-400 hover:text-gray-600'
                     }`}
                   >
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -605,306 +646,308 @@ const CourseForm = () => {
                 ))}
               </nav>
             </div>
-            <div className="p-6">
+
+            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
               {lessonTab === 'content' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Lesson Title *
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700">
+                        Lesson Title <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
+                        autoFocus
+                        placeholder="e.g. Introduction to React"
                         value={lessonForm.title}
                         onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary-100"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Module Number *
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700">
+                        Module Number <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="number"
                         min="1"
                         value={lessonForm.moduleNumber}
                         onChange={(e) => setLessonForm({ ...lessonForm, moduleNumber: parseInt(e.target.value) || 1 })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary-100"
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                    <select
-                      value={lessonForm.type}
-                      onChange={(e) => setLessonForm({ ...lessonForm, type: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="video">Video</option>
-                      <option value="document">Document</option>
-                      <option value="image">Image</option>
-                    </select>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700">Content Type</label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {['video', 'document', 'image'].map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setLessonForm({ ...lessonForm, type })}
+                          className={`px-4 py-2 border-2 rounded-xl text-sm font-medium capitalize transition-all ${
+                            lessonForm.type === type
+                              ? 'border-primary-600 bg-primary-50 text-primary-700'
+                              : 'border-gray-100 text-gray-500 hover:border-gray-200'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+
                   {lessonForm.type === 'video' && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Upload Method
-                        </label>
-                        <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="space-y-6 animate-fade-in">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">Video Source</label>
+                        <div className="flex p-1 bg-gray-50 rounded-xl border border-gray-200">
                           <button
                             type="button"
                             onClick={() => setLessonForm({ ...lessonForm, videoFile: null })}
-                            className={`px-4 py-2 border-2 rounded-lg transition-all ${
+                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
                               !lessonForm.videoFile
-                                ? 'border-primary-600 bg-primary-50 text-primary-700'
-                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                                ? 'bg-white shadow-sm text-primary-600'
+                                : 'text-gray-500 hover:text-gray-700'
                             }`}
                           >
-                            Video URL
+                            Online URL
                           </button>
                           <button
                             type="button"
                             onClick={() => setLessonForm({ ...lessonForm, videoFile: 'placeholder' })}
-                            className={`px-4 py-2 border-2 rounded-lg transition-all ${
+                            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
                               lessonForm.videoFile
-                                ? 'border-primary-600 bg-primary-50 text-primary-700'
-                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                                ? 'bg-white shadow-sm text-primary-600'
+                                : 'text-gray-500 hover:text-gray-700'
                             }`}
                           >
-                            Upload File
+                            Upload MP4
                           </button>
                         </div>
                       </div>
+
                       {!lessonForm.videoFile ? (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Video URL
-                          </label>
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">Video URL</label>
                           <input
                             type="url"
                             value={lessonForm.url}
                             onChange={(e) => setLessonForm({ ...lessonForm, url: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                            placeholder="https://youtube.com/watch?v=... or upload file"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white"
+                            placeholder="https://youtube.com/watch?v=..."
                           />
-                          <p className="text-xs text-gray-500 mt-1">YouTube, Vimeo, or direct video URL</p>
                         </div>
                       ) : (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Video File
-                          </label>
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-400 transition-colors">
-                            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                            <p className="text-sm text-gray-600 mb-2">Click to upload or drag and drop</p>
-                            <p className="text-xs text-gray-500">MP4, WebM, or AVI (max 500MB)</p>
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">Upload Video</label>
+                          <div className="relative border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center hover:border-primary-400 transition-all group bg-gray-50/50">
+                            <Upload className="w-10 h-10 text-gray-300 mx-auto mb-3 group-hover:text-primary-400 transition-colors" />
+                            <div className="text-sm text-gray-600">
+                              {lessonForm.videoFile instanceof File ? (
+                                <span className="text-primary-600 font-semibold">{lessonForm.videoFile.name}</span>
+                              ) : (
+                                <>
+                                  <span className="text-primary-600 font-semibold cursor-pointer">Click to upload</span> or drag and drop
+                                </>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-400 mt-2">MP4/WebM up to 500MB</p>
                             <input
                               type="file"
                               accept="video/*"
-                              className="hidden"
-                              id="video-upload"
+                              className="absolute inset-0 opacity-0 cursor-pointer"
                               onChange={(e) => {
                                 const file = e.target.files[0];
                                 if (file) {
-                                  setLessonForm({ ...lessonForm, url: URL.createObjectURL(file) });
-                                  alert(`File "${file.name}" ready for upload. In production, this would upload to your server.`);
+                                  setLessonForm({
+                                    ...lessonForm,
+                                    videoFile: file,
+                                    url: URL.createObjectURL(file),
+                                  });
                                 }
                               }}
                             />
-                            <label
-                              htmlFor="video-upload"
-                              className="mt-3 inline-block px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 cursor-pointer"
-                            >
-                              Choose File
-                            </label>
-                            {lessonForm.url && (
-                              <p className="text-xs text-green-600 mt-2">✓ File selected</p>
-                            )}
                           </div>
                         </div>
                       )}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Duration (minutes)
-                        </label>
-                        <input
-                          type="number"
-                          value={lessonForm.duration}
-                          onChange={(e) =>
-                            setLessonForm({ ...lessonForm, duration: parseInt(e.target.value) })
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                        />
+
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-semibold text-gray-700">Duration (mins)</label>
+                          <input
+                            type="number"
+                            value={lessonForm.duration}
+                            onChange={(e) => setLessonForm({ ...lessonForm, duration: parseInt(e.target.value) || 0 })}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Video Transcript (Optional)
-                        </label>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">Video Transcript</label>
                         <textarea
+                          placeholder="Paste transcript here for AI quiz generation..."
                           value={lessonForm.transcript}
                           onChange={(e) => setLessonForm({ ...lessonForm, transcript: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                          rows={4}
-                          placeholder="Paste or type video transcript for AI quiz generation..."
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl min-h-[120px] focus:ring-4 focus:ring-primary-100"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Used to generate skip-unlock quiz questions</p>
                       </div>
-                    </>
+                    </div>
                   )}
+
                   {lessonForm.type === 'document' && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Document URL
-                        </label>
+                    <div className="space-y-4 animate-fade-in">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">Document URL</label>
                         <input
                           type="url"
                           value={lessonForm.url}
                           onChange={(e) => setLessonForm({ ...lessonForm, url: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl"
                         />
                       </div>
-                      <label className="flex items-center space-x-2">
+                      <label className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
                         <input
                           type="checkbox"
                           checked={lessonForm.allowDownload}
-                          onChange={(e) =>
-                            setLessonForm({ ...lessonForm, allowDownload: e.target.checked })
-                          }
-                          className="rounded"
+                          onChange={(e) => setLessonForm({ ...lessonForm, allowDownload: e.target.checked })}
+                          className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
-                        <span className="text-sm text-gray-700">Allow Download</span>
+                        <span className="text-sm font-medium text-gray-700">Students can download this document</span>
                       </label>
-                    </>
+                    </div>
                   )}
+
                   {lessonForm.type === 'image' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Image URL
-                      </label>
+                    <div className="space-y-2 animate-fade-in">
+                      <label className="text-sm font-semibold text-gray-700">Image URL</label>
                       <input
                         type="url"
                         value={lessonForm.url}
                         onChange={(e) => setLessonForm({ ...lessonForm, url: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl"
                       />
                     </div>
                   )}
                 </div>
               )}
+
               {lessonTab === 'description' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lesson Description
-                  </label>
+                <div className="space-y-2 animate-fade-in">
+                  <label className="text-sm font-semibold text-gray-700">Lesson Description</label>
                   <textarea
                     value={lessonForm.description}
-                    onChange={(e) =>
-                      setLessonForm({ ...lessonForm, description: e.target.value })
-                    }
-                    rows={6}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    onChange={(e) => setLessonForm({ ...lessonForm, description: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl min-h-[300px] focus:ring-4 focus:ring-primary-100"
+                    placeholder="Provide context and details about this lesson..."
                   />
                 </div>
               )}
+
               {lessonTab === 'attachments' && (
-                <div>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Add additional resources for this lesson
-                  </p>
-                  
-                  {/* Add new attachment form */}
-                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                    <div className="grid grid-cols-3 gap-3 mb-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                <div className="space-y-6 animate-fade-in">
+                  <div className="bg-primary-50/50 p-6 rounded-2xl border border-primary-100 space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Type</label>
                         <select
                           value={newAttachment.type}
                           onChange={(e) => setNewAttachment({ ...newAttachment, type: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
                         >
-                          <option value="link">Link</option>
-                          <option value="file">File URL</option>
+                          <option value="link">Website Link</option>
+                          <option value="file">File Resource</option>
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Name</label>
                         <input
                           type="text"
                           value={newAttachment.name}
                           onChange={(e) => setNewAttachment({ ...newAttachment, name: e.target.value })}
-                          placeholder="Resource name"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          placeholder="e.g. Cheat Sheet"
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">URL</label>
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">URL / Link</label>
                         <input
                           type="url"
                           value={newAttachment.url}
                           onChange={(e) => setNewAttachment({ ...newAttachment, url: e.target.value })}
                           placeholder="https://..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
                         />
                       </div>
                     </div>
                     <button
                       onClick={handleAddAttachment}
                       disabled={!newAttachment.name || !newAttachment.url}
-                      className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 transition-all shadow-md"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>Add Attachment</span>
+                      Add Attachment
                     </button>
                   </div>
 
-                  {/* Attachments list */}
-                  {lessonForm.attachments && lessonForm.attachments.length > 0 ? (
-                    <div className="space-y-2">
+                  {lessonForm.attachments?.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-3">
                       {lessonForm.attachments.map((att, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
-                        >
-                          <div className="flex items-center space-x-3">
-                            {att.type === 'link' ? (
-                              <Link className="w-5 h-5 text-primary-600" />
-                            ) : (
-                              <FileText className="w-5 h-5 text-primary-600" />
-                            )}
+                        <div key={index} className="flex items-center justify-between p-4 border border-gray-100 rounded-2xl hover:bg-gray-50 transition-colors group">
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-white shadow-sm rounded-xl text-primary-600 group-hover:scale-110 transition-transform">
+                              {att.type === 'link' ? <Link className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                            </div>
                             <div>
-                              <p className="font-medium text-gray-900">{att.name}</p>
-                              <p className="text-xs text-gray-500 truncate max-w-xs">{att.url}</p>
+                              <p className="font-bold text-gray-900">{att.name}</p>
+                              <p className="text-xs text-gray-400 font-medium truncate max-w-[300px]">{att.url}</p>
                             </div>
                           </div>
                           <button
                             onClick={() => handleRemoveAttachment(index)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-center text-gray-500 py-4">No attachments yet</p>
+                    <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                      <p className="text-gray-400 font-medium">No attachments added yet.</p>
+                    </div>
                   )}
                 </div>
               )}
             </div>
-            <div className="sticky bottom-0 bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
+
+            <div className="flex-shrink-0 bg-white px-8 py-5 flex items-center justify-end gap-3 border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
               <button
+                type="button"
                 onClick={() => setShowLessonModal(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100"
+                className="px-6 py-3 border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 transition-all"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSaveLesson}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                disabled={savingLesson}
+                className="px-8 py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-200 flex items-center gap-3 transition-all active:scale-95"
               >
-                Save Lesson
+                {savingLesson ? (
+                  <>
+                    <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span>Saving Lesson...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    <span>Save Lesson</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
